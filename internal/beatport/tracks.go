@@ -3,15 +3,30 @@ package beatport
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
 type BeatportTrack struct {
-	ID      int64            `json:"id"`
-	Name    string           `json:"name"`
-	MixName string           `json:"mix_name"`
-	Number  int              `json:"number"`
-	Artists []BeatportArtist `json:"artists"`
+	ID       int64            `json:"id"`
+	Name     string           `json:"name"`
+	MixName  string           `json:"mix_name"`
+	Number   int              `json:"number"`
+	Key      BeatportTrackKey `json:"key"`
+	BPM      int              `json:"bpm"`
+	Genre    BeatportGenre    `json:"genre"`
+	ISRC     string           `json:"isrc"`
+	Artists  []BeatportArtist `json:"artists"`
+	Remixers []BeatportArtist `json:"remixers"`
+	Release  BeatportRelease  `json:"release"`
+}
+
+type BeatportTrackKey struct {
+	Name string `json:"name"`
+}
+
+type BeatportGenre struct {
+	Name string `json:"name"`
 }
 
 type BeatportTrackStream struct {
@@ -19,28 +34,44 @@ type BeatportTrackStream struct {
 	StreamQuality string `json:"stream_quality"`
 }
 
-func (t *BeatportTrack) Filename() string {
+func (t *BeatportTrack) Filename(template string) string {
 	var artistNames []string
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
+	var remixerNames []string
+	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
 
 	for _, artist := range t.Artists {
 		artistNames = append(artistNames, artist.Name)
 	}
-
 	artistsString := strings.Join(artistNames, ", ")
 
+	for _, artist := range t.Remixers {
+		remixerNames = append(remixerNames, artist.Name)
+	}
+	remixersString := strings.Join(remixerNames, ", ")
+
+	templateValues := map[string]string{
+		"id":       strconv.Itoa(int(t.ID)),
+		"name":     t.Name,
+		"mix_name": t.MixName,
+		"artists":  artistsString,
+		"remixers": remixersString,
+		"number":   fmt.Sprintf("%02d", t.Number),
+		"key":      t.Key.Name,
+		"bpm":      strconv.Itoa(t.BPM),
+		"genre":    t.Genre.Name,
+		"isrc":     t.ISRC,
+	}
+	fileName := ParseTemplate(template, templateValues)
+
 	for _, char := range charsToRemove {
-		artistsString = strings.Replace(artistsString, char, "", -1)
-		t.Name = strings.Replace(t.Name, char, "", -1)
-		t.MixName = strings.Replace(t.MixName, char, "", -1)
+		fileName = strings.Replace(fileName, char, "", -1)
 	}
 
-	filename := fmt.Sprintf(
-		"%s - %s (%s).flac",
-		artistsString,
-		t.Name,
-		t.MixName)
-	return filename
+	if len(fileName) > 250 {
+		fileName = fileName[:250]
+	}
+
+	return fileName + ".flac"
 }
 
 func (b *Beatport) GetTrack(id int64) (*BeatportTrack, error) {

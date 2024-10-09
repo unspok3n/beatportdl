@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -63,4 +64,16 @@ func (b *Beatport) ParseUrl(inputURL string) (*BeatportLink, error) {
 	}
 
 	return nil, ErrInvalidUrl
+}
+
+func ParseTemplate(template string, values map[string]string) string {
+	re := regexp.MustCompile(`\{(\w+)}`)
+	result := re.ReplaceAllStringFunc(template, func(placeholder string) string {
+		key := strings.Trim(placeholder, "{}")
+		if value, found := values[key]; found {
+			return value
+		}
+		return placeholder
+	})
+	return result
 }
