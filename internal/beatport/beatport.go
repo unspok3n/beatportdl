@@ -16,6 +16,10 @@ type Beatport struct {
 	client    *http.Client
 }
 
+type BeatportError struct {
+	Detail string `json:"detail"`
+}
+
 type tokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -195,6 +199,15 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		response := &BeatportError{}
+		if err = json.NewDecoder(resp.Body).Decode(response); err == nil {
+			return nil, fmt.Errorf(
+				"request failed with status code: %d - %s",
+				resp.StatusCode,
+				response.Detail,
+			)
+		}
 		return nil, fmt.Errorf("request failed with status code: %d", resp.StatusCode)
 	}
 
