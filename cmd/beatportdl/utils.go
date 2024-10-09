@@ -67,9 +67,13 @@ func Pause() {
 	os.Exit(1)
 }
 
-func FatalError(caller string, err error) {
+func LogError(caller string, err error) {
 	message := fmt.Sprintf("%s: %s", caller, err.Error())
 	fmt.Println(message)
+}
+
+func FatalError(caller string, err error) {
+	LogError(caller, err)
 	Pause()
 }
 
