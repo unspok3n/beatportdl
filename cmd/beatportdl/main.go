@@ -3,12 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"unspok3n/beatportdl/config"
 	"unspok3n/beatportdl/internal/beatport"
 )
 
 const authUrl = "https://api.beatport.com/v4/auth/o/authorize/?client_id=ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ&response_type=code"
+const (
+	configFilename = "beatportdl-config.yml"
+	cacheFilename  = "beatportdl-credentials.json"
+)
 
 type application struct {
 	config *config.AppConfig
@@ -17,7 +23,11 @@ type application struct {
 }
 
 func main() {
-	config, err := config.ParseConfig("beatportdl-config.yml")
+	configFilePath, err := FindFile(configFilename)
+	if err != nil {
+		FatalError("find config file", err)
+	}
+	parsedConfig, err := config.ParseConfig(configFilePath)
 	if err != nil {
 		FatalError("load config", err)
 	}
@@ -26,7 +36,29 @@ func main() {
 
 	flag.Parse()
 
-	bpClient, err := beatport.New(config.Proxy, !*authorizeFlag)
+	execCachePath, err := ExecutableDirFilePath(cacheFilename)
+	if err != nil {
+		FatalError("get executable path", err)
+	}
+	cacheFilePath := execCachePath
+
+	if !*authorizeFlag {
+		_, err = os.Stat(cacheFilePath)
+		if err != nil {
+			workingCachePath, err := WorkingDirFilePath(cacheFilename)
+			if err != nil {
+				FatalError("get current working dir", err)
+			}
+			_, err = os.Stat(workingCachePath)
+			if err != nil {
+				*authorizeFlag = true
+			} else {
+				cacheFilePath = workingCachePath
+			}
+		}
+	}
+
+	bpClient, err := beatport.New(cacheFilePath, parsedConfig.Proxy)
 	if err != nil {
 		FatalError("beatport api client", err)
 	}
@@ -43,12 +75,14 @@ func main() {
 		}
 
 		fmt.Println("Successfully authorized!")
+	}
 
-		Pause()
+	if err := bpClient.LoadCachedTokenPair(); err != nil {
+		FatalError("load cached token pair", err)
 	}
 
 	app := &application{
-		config: config,
+		config: parsedConfig,
 		bp:     bpClient,
 	}
 

@@ -12,8 +12,9 @@ import (
 )
 
 type Beatport struct {
-	tokenPair *tokenPair
-	client    *http.Client
+	tokenPair     *tokenPair
+	cacheFilePath string
+	client        *http.Client
 }
 
 type BeatportError struct {
@@ -30,8 +31,7 @@ type tokenPair struct {
 }
 
 const (
-	credentialsCacheFile = "beatportdl-credentials.json"
-	clientId             = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
+	clientId = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
 )
 
 const (
@@ -39,7 +39,7 @@ const (
 	authEndpoint = "/auth/o/token/"
 )
 
-func New(proxyUrl string, readCache bool) (*Beatport, error) {
+func New(cacheFilePath string, proxyUrl string) (*Beatport, error) {
 	transport := &http.Transport{}
 	if proxyUrl != "" {
 		proxyURL, _ := url.Parse(proxyUrl)
@@ -47,23 +47,18 @@ func New(proxyUrl string, readCache bool) (*Beatport, error) {
 		transport.Proxy = proxy
 	}
 	bp := Beatport{
+		cacheFilePath: cacheFilePath,
 		client: &http.Client{
 			Timeout:   time.Duration(40) * time.Second,
 			Transport: transport,
 		},
 	}
 
-	if readCache {
-		if err := bp.loadCachedTokenPair(); err != nil {
-			return nil, fmt.Errorf("failed to load credentials from cache: %v", err)
-		}
-	}
-
 	return &bp, nil
 }
 
-func (b *Beatport) loadCachedTokenPair() error {
-	data, err := os.ReadFile(credentialsCacheFile)
+func (b *Beatport) LoadCachedTokenPair() error {
+	data, err := os.ReadFile(b.cacheFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read token file: %w", err)
 	}
@@ -83,7 +78,7 @@ func (b *Beatport) cacheTokenPair() error {
 		return fmt.Errorf("failed to marshal tokenPair: %w", err)
 	}
 
-	if err := os.WriteFile(credentialsCacheFile, data, 0600); err != nil {
+	if err := os.WriteFile(b.cacheFilePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write token to cache: %w", err)
 	}
 
