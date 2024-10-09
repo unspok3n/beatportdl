@@ -36,7 +36,7 @@ Copy the `code` value from the address bar
 
 If everything went well, you should see the `beatportdl-credentials.json` file appear in the beatportdl directory.
 
-*You may need to repeat this process if you haven't used the downloader for a long time and the credentials have expired.*
+*You may need to repeat this process if you haven't used the downloader for some time and the credentials have expired. ("Authentication credentials were not provided" error)*
 
 Usage
 ---
@@ -44,9 +44,21 @@ Run beatportdl and enter the track or release url
 ```shell
 ./beatportdl
 ```
-You can also specify the proxy url in the `beatportdl-config.yml` to bypass territory restrictions
-
-
-```yml
-proxy: 'http://username:password@127.0.0.1'
+or specify urls using positional arguments
+```shell
+./beatportdl https://www.beatport.com/release/slug/12345678 https://www.beatport.com/track/slug/12345678
 ```
+
+Config options
+---
+| Option                       | Default                                   | Description                                                      |
+|------------------------------|-------------------------------------------|------------------------------------------------------------------|
+| `create_release_directory`   | false                                     | Create directory per release                                     |
+| `track_file_template`        | {number}. {artists} - {name} ({mix_name}) | Track filename template                                          |
+| `release_directory_template` | [{catalog_number}] {artists} - {name}     | Release directory name template                                  |
+| `whitespace_character`       |                                           | Whitespace character for track filenames and release directories |
+| `proxy`                      |                                           | Proxy url                                                        |
+
+Available template keywords:
+* Track: `id`,`name`,`mix_name`,`artists`,`remixers`,`number`,`key`,`bpm`,`genre`,`isrc`
+* Release: `id`,`name`,`artists`,`remixers`,`date`,`catalog_number`
