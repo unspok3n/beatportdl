@@ -12,6 +12,8 @@ import (
 )
 
 type Beatport struct {
+	username      string
+	password      string
 	tokenPair     *tokenPair
 	cacheFilePath string
 	client        *http.Client
@@ -31,7 +33,8 @@ type tokenPair struct {
 }
 
 const (
-	clientId = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
+	clientId     = "nBQh4XCUqE0cpoy609mC8GoyjCcJHBwbI374FYmE"
+	clientSecret = "7oBWZwYOia9u4yblRmVTTet5sficrN7xbbCglbmRxoN08ShlpxyXbixLeov2wC62R3WsD2dxSTwLosi71FqpfLSOKnFSZ4FTXoayHNLHpWz7XcmyOMiLkqnbTPk2kI9L"
 )
 
 const (
@@ -39,7 +42,7 @@ const (
 	authEndpoint = "/auth/o/token/"
 )
 
-func New(cacheFilePath string, proxyUrl string) (*Beatport, error) {
+func New(username string, password string, cacheFilePath string, proxyUrl string) (*Beatport, error) {
 	transport := &http.Transport{}
 	if proxyUrl != "" {
 		proxyURL, _ := url.Parse(proxyUrl)
@@ -47,6 +50,8 @@ func New(cacheFilePath string, proxyUrl string) (*Beatport, error) {
 		transport.Proxy = proxy
 	}
 	bp := Beatport{
+		username:      username,
+		password:      password,
 		cacheFilePath: cacheFilePath,
 		client: &http.Client{
 			Timeout:   time.Duration(40) * time.Second,
@@ -69,6 +74,7 @@ func (b *Beatport) LoadCachedTokenPair() error {
 	}
 
 	b.tokenPair = &loadedToken
+
 	return nil
 }
 
@@ -108,27 +114,32 @@ func (b *Beatport) refreshToken() (*tokenPair, error) {
 	return response, nil
 }
 
-func (b *Beatport) Authorize(code string) (*tokenPair, error) {
+func (b *Beatport) Authorize() error {
 	payload := map[string]string{
-		"client_id":  clientId,
-		"code":       code,
-		"grant_type": "authorization_code",
+		"client_id":     clientId,
+		"client_secret": clientSecret,
+		"grant_type":    "password",
+		"username":      b.username,
+		"password":      b.password,
 	}
 
 	res, err := b.fetch("POST", authEndpoint, payload, "application/x-www-form-urlencoded")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 	response := &tokenPair{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
-		return nil, err
+		return err
 	}
 	b.tokenPair = response
 	b.tokenPair.IssuedAt = time.Now().Unix()
-	b.cacheTokenPair()
+	err = b.cacheTokenPair()
+	if err != nil {
+		return err
+	}
 
-	return response, nil
+	return nil
 }
 
 func encodeFormPayload(payload interface{}) (url.Values, error) {
@@ -155,7 +166,14 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 		currentTime := time.Now().Unix()
 		tokenExpirationTime := b.tokenPair.IssuedAt + b.tokenPair.ExpiresIn
 		if currentTime+300 >= tokenExpirationTime {
-			b.refreshToken()
+			fmt.Println("Refreshing token")
+			_, err := b.refreshToken()
+			if err != nil {
+				fmt.Println("Authorizing")
+				if err := b.Authorize(); err != nil {
+					return nil, fmt.Errorf("invalid token and authorization error: %w", err)
+				}
+			}
 		}
 	}
 
@@ -194,6 +212,10 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized {
+			b.tokenPair.IssuedAt = 0
+			return b.fetch(method, endpoint, payload, contentType)
+		}
 		defer resp.Body.Close()
 		response := &BeatportError{}
 		if err = json.NewDecoder(resp.Body).Decode(response); err == nil {

@@ -32,7 +32,6 @@ func main() {
 		FatalError("load config", err)
 	}
 
-	authorizeFlag := flag.Bool("authorize", false, "Start the authorization process")
 	flag.Parse()
 	urls := flag.Args()
 
@@ -42,43 +41,33 @@ func main() {
 	}
 	cacheFilePath := execCachePath
 
-	if !*authorizeFlag {
-		_, err = os.Stat(cacheFilePath)
+	_, err = os.Stat(cacheFilePath)
+	if err != nil {
+		workingCachePath, err := WorkingDirFilePath(cacheFilename)
 		if err != nil {
-			workingCachePath, err := WorkingDirFilePath(cacheFilename)
-			if err != nil {
-				FatalError("get current working dir", err)
-			}
-			_, err = os.Stat(workingCachePath)
-			if err != nil {
-				*authorizeFlag = true
-			} else {
-				cacheFilePath = workingCachePath
-			}
+			FatalError("get current working dir", err)
+		}
+		_, err = os.Stat(workingCachePath)
+		if err == nil {
+			cacheFilePath = workingCachePath
 		}
 	}
 
-	bpClient, err := beatport.New(cacheFilePath, parsedConfig.Proxy)
+	bpClient, err := beatport.New(
+		parsedConfig.Username,
+		parsedConfig.Password,
+		cacheFilePath,
+		parsedConfig.Proxy,
+	)
 	if err != nil {
 		FatalError("beatport api client", err)
 	}
 
-	if *authorizeFlag {
-		message := `In your browser, open the following url, login if necessary, and then copy the "code" parameter from the address bar`
-		fmt.Println(message)
-		fmt.Print(authUrl + "\n\n")
-		fmt.Print("Enter authorization code: ")
-		code := GetLine()
-
-		if _, err := bpClient.Authorize(code); err != nil {
+	if err := bpClient.LoadCachedTokenPair(); err != nil {
+		fmt.Println("Authorizing")
+		if err := bpClient.Authorize(); err != nil {
 			FatalError("beatport", err)
 		}
-
-		fmt.Println("Successfully authorized!")
-	}
-
-	if err := bpClient.LoadCachedTokenPair(); err != nil {
-		FatalError("load cached token pair", err)
 	}
 
 	app := &application{
