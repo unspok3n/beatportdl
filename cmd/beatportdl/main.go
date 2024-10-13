@@ -24,8 +24,29 @@ type application struct {
 func main() {
 	configFilePath, err := FindFile(configFilename)
 	if err != nil {
-		FatalError("find config file", err)
+		fmt.Println("Config file not found, creating a new one")
+		configFilePath, err = ExecutableDirFilePath(configFilename)
+		if err != nil {
+			FatalError("get executable path", err)
+		}
+
+		fmt.Print("Username: ")
+		username := GetLine()
+		fmt.Print("Password: ")
+		password := GetLine()
+		fmt.Print("Downloads directory: ")
+		downloadsDir := GetLine()
+
+		cfg := &config.AppConfig{
+			Username:           username,
+			Password:           password,
+			DownloadsDirectory: downloadsDir,
+		}
+		if err := cfg.Save(configFilePath); err != nil {
+			FatalError("save config", err)
+		}
 	}
+
 	parsedConfig, err := config.ParseConfig(configFilePath)
 	if err != nil {
 		FatalError("load config", err)
@@ -200,17 +221,32 @@ func main() {
 }
 
 func (app *application) saveTrack(track beatport.Track, directory string) error {
-	fmt.Printf("Downloading %s (%s)\n", track.Name, track.MixName)
 	stream, err := app.bp.DownloadTrack(track.ID)
 	if err != nil {
 		return err
 	}
 	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
-	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, stream.StreamQuality)
+	var fileExtension string
+	var displayQuality string
+	switch stream.StreamQuality {
+	case ".128k.aac.mp4":
+		fileExtension = ".aac"
+		displayQuality = "AAC 128kbps"
+	case ".256k.aac.mp4":
+		fileExtension = ".aac"
+		displayQuality = "AAC 256kbps"
+	case ".flac":
+		fileExtension = ".flac"
+		displayQuality = "FLAC"
+	default:
+		return fmt.Errorf("invalid stream quality: %s", stream.StreamQuality)
+	}
+	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
+	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
 	if err = app.downloadFile(stream.Location, filePath); err != nil {
 		return err
 	}
-	fmt.Printf("Finished downloading %s (%s)\n", track.Name, track.MixName)
+	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
 
 	return nil
 }

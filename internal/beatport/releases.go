@@ -69,7 +69,7 @@ func (r *Release) DirectoryName(template string, whitespace string) string {
 		directoryName = directoryName[:250]
 	}
 
-	if whitespace != " " {
+	if whitespace != "" {
 		directoryName = strings.Replace(
 			directoryName,
 			" ",

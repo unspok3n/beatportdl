@@ -71,7 +71,7 @@ func (t *Track) Filename(template string, whitespace string) string {
 		fileName = fileName[:250]
 	}
 
-	if whitespace != " " {
+	if whitespace != "" {
 		fileName = strings.Replace(fileName, " ", whitespace, -1)
 	}
 
