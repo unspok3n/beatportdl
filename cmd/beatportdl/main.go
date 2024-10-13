@@ -95,65 +95,84 @@ func main() {
 					return
 				}
 
+				var coverPath string
+				var coverUrl string
+
 				if app.config.CreateReleaseDirectory {
 					release, err := app.bp.GetRelease(track.Release.ID)
 					if err != nil {
 						LogError("fetch release", err)
 						return
 					}
-
-					releaseDirectory := release.DirectoryName(app.config.ReleaseDirectoryTemplate)
-					if app.config.WhitespaceCharacter != " " {
-						releaseDirectory = strings.Replace(
-							releaseDirectory,
-							" ",
-							app.config.WhitespaceCharacter,
-							-1,
-						)
-					}
+					releaseDirectory := release.DirectoryName(
+						app.config.ReleaseDirectoryTemplate,
+						app.config.WhitespaceCharacter,
+					)
 					downloadsDirectory = fmt.Sprintf("%s/%s",
 						downloadsDirectory,
 						releaseDirectory,
 					)
-
-				}
-				if _, err := os.Stat(downloadsDirectory); os.IsNotExist(err) {
-					if err := os.MkdirAll(downloadsDirectory, 0760); err != nil {
-						LogError("create downloads directory", err)
-						return
+					if app.config.CoverSize != "" {
+						coverUrl = strings.Replace(
+							release.Image.DynamicURI,
+							"{w}x{h}",
+							app.config.CoverSize,
+							-1,
+						)
+						coverPath = downloadsDirectory + "/cover.jpg"
 					}
 				}
+
+				if err := CreateDirectory(downloadsDirectory); err != nil {
+					LogError("create downloads directory", err)
+					return
+				}
+
+				if coverUrl != "" && coverPath != "" {
+					if err = app.downloadFile(coverUrl, coverPath); err != nil {
+						LogError("download cover", err)
+					}
+				}
+
 				if err := app.saveTrack(*track, downloadsDirectory); err != nil {
 					LogError("save track", err)
 					return
 				}
+
 			} else if link.Type == beatport.ReleaseLink {
 				release, err := app.bp.GetRelease(link.ID)
 				if err != nil {
 					LogError("fetch release", err)
 					return
 				}
+
 				downloadsDirectory := app.config.DownloadsDirectory
 				if app.config.CreateReleaseDirectory {
-					releaseDirectory := release.DirectoryName(app.config.ReleaseDirectoryTemplate)
-					if app.config.WhitespaceCharacter != " " {
-						releaseDirectory = strings.Replace(
-							releaseDirectory,
-							" ",
-							app.config.WhitespaceCharacter,
-							-1,
-						)
-					}
+					releaseDirectory := release.DirectoryName(
+						app.config.ReleaseDirectoryTemplate,
+						app.config.WhitespaceCharacter,
+					)
 					downloadsDirectory = fmt.Sprintf("%s/%s",
 						app.config.DownloadsDirectory,
 						releaseDirectory,
 					)
 				}
 
-				if _, err := os.Stat(downloadsDirectory); os.IsNotExist(err) {
-					if err := os.MkdirAll(downloadsDirectory, 0760); err != nil {
-						LogError("create downloads directory", err)
-						return
+				if err := CreateDirectory(downloadsDirectory); err != nil {
+					LogError("create downloads directory", err)
+					return
+				}
+
+				if app.config.CoverSize != "" {
+					coverUrl := strings.Replace(
+						release.Image.DynamicURI,
+						"{w}x{h}",
+						app.config.CoverSize,
+						-1,
+					)
+					coverPath := downloadsDirectory + "/cover.jpg"
+					if err = app.downloadFile(coverUrl, coverPath); err != nil {
+						LogError("download cover", err)
 					}
 				}
 
@@ -186,10 +205,7 @@ func (app *application) saveTrack(track beatport.Track, directory string) error 
 	if err != nil {
 		return err
 	}
-	fileName := track.Filename(app.config.TrackFileTemplate)
-	if app.config.WhitespaceCharacter != " " {
-		fileName = strings.Replace(fileName, " ", app.config.WhitespaceCharacter, -1)
-	}
+	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
 	filePath := fmt.Sprintf("%s/%s", directory, fileName)
 	if err = app.downloadFile(stream.Location, filePath); err != nil {
 		return err

@@ -34,7 +34,7 @@ type TrackStream struct {
 	StreamQuality string `json:"stream_quality"`
 }
 
-func (t *Track) Filename(template string) string {
+func (t *Track) Filename(template string, whitespace string) string {
 	var artistNames []string
 	var remixerNames []string
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
@@ -69,6 +69,10 @@ func (t *Track) Filename(template string) string {
 
 	if len(fileName) > 250 {
 		fileName = fileName[:250]
+	}
+
+	if whitespace != " " {
+		fileName = strings.Replace(fileName, " ", whitespace, -1)
 	}
 
 	return fileName + ".flac"

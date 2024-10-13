@@ -14,6 +14,7 @@ type Release struct {
 	Remixers      []Artist `json:"remixers"`
 	CatalogNumber string   `json:"catalog_number"`
 	Date          string   `json:"new_release_date"`
+	Image         Image    `json:"image"`
 	TrackUrls     []string `json:"tracks"`
 }
 
@@ -35,7 +36,7 @@ func (b *Beatport) GetRelease(id int64) (*Release, error) {
 	return response, nil
 }
 
-func (r *Release) DirectoryName(template string) string {
+func (r *Release) DirectoryName(template string, whitespace string) string {
 	var artistNames []string
 	var remixerNames []string
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
@@ -66,6 +67,15 @@ func (r *Release) DirectoryName(template string) string {
 
 	if len(directoryName) > 250 {
 		directoryName = directoryName[:250]
+	}
+
+	if whitespace != " " {
+		directoryName = strings.Replace(
+			directoryName,
+			" ",
+			whitespace,
+			-1,
+		)
 	}
 
 	return directoryName

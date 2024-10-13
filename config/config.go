@@ -12,7 +12,6 @@ type AppConfig struct {
 	DownloadsDirectory       string `yaml:"downloads_directory"`
 	CreateReleaseDirectory   bool   `yaml:"create_release_directory"`
 	CoverSize                string `yaml:"cover_size"`
-	CoverFileTemplate        string `yaml:"cover_file_template"`
 	TrackFileTemplate        string `yaml:"track_file_template"`
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template"`
 	WhitespaceCharacter      string `yaml:"whitespace_character"`

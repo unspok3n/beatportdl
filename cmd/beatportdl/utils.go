@@ -120,3 +120,12 @@ func FindFile(fileName string) (string, error) {
 
 	return "", fmt.Errorf("%s not found", fileName)
 }
+
+func CreateDirectory(directory string) error {
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+		if err := os.MkdirAll(directory, 0760); err != nil {
+			return fmt.Errorf("create directory: %w", err)
+		}
+	}
+	return nil
+}

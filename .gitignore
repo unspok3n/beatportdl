@@ -4,6 +4,6 @@
 bin/
 temp/
 error.log
-bp-credentials.json
+beatportdl-credentials.json
 beatportdl-config.yml
 downloads/
