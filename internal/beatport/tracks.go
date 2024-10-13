@@ -7,34 +7,34 @@ import (
 	"strings"
 )
 
-type BeatportTrack struct {
-	ID       int64            `json:"id"`
-	Name     string           `json:"name"`
-	MixName  string           `json:"mix_name"`
-	Number   int              `json:"number"`
-	Key      BeatportTrackKey `json:"key"`
-	BPM      int              `json:"bpm"`
-	Genre    BeatportGenre    `json:"genre"`
-	ISRC     string           `json:"isrc"`
-	Artists  []BeatportArtist `json:"artists"`
-	Remixers []BeatportArtist `json:"remixers"`
-	Release  BeatportRelease  `json:"release"`
+type Track struct {
+	ID       int64    `json:"id"`
+	Name     string   `json:"name"`
+	MixName  string   `json:"mix_name"`
+	Number   int      `json:"number"`
+	Key      TrackKey `json:"key"`
+	BPM      int      `json:"bpm"`
+	Genre    Genre    `json:"genre"`
+	ISRC     string   `json:"isrc"`
+	Artists  []Artist `json:"artists"`
+	Remixers []Artist `json:"remixers"`
+	Release  Release  `json:"release"`
 }
 
-type BeatportTrackKey struct {
+type TrackKey struct {
 	Name string `json:"name"`
 }
 
-type BeatportGenre struct {
+type Genre struct {
 	Name string `json:"name"`
 }
 
-type BeatportTrackStream struct {
+type TrackStream struct {
 	Location      string `json:"location"`
 	StreamQuality string `json:"stream_quality"`
 }
 
-func (t *BeatportTrack) Filename(template string) string {
+func (t *Track) Filename(template string) string {
 	var artistNames []string
 	var remixerNames []string
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
@@ -74,7 +74,7 @@ func (t *BeatportTrack) Filename(template string) string {
 	return fileName + ".flac"
 }
 
-func (b *Beatport) GetTrack(id int64) (*BeatportTrack, error) {
+func (b *Beatport) GetTrack(id int64) (*Track, error) {
 	res, err := b.fetch(
 		"GET",
 		fmt.Sprintf("/catalog/tracks/%d/", id),
@@ -85,14 +85,14 @@ func (b *Beatport) GetTrack(id int64) (*BeatportTrack, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	response := &BeatportTrack{}
+	response := &Track{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
 	return response, nil
 }
 
-func (b *Beatport) DownloadTrack(id int64) (*BeatportTrackStream, error) {
+func (b *Beatport) DownloadTrack(id int64) (*TrackStream, error) {
 	res, err := b.fetch(
 		"GET",
 		fmt.Sprintf("/catalog/tracks/%d/download/", id),
@@ -103,7 +103,7 @@ func (b *Beatport) DownloadTrack(id int64) (*BeatportTrackStream, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	response := &BeatportTrackStream{}
+	response := &TrackStream{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}

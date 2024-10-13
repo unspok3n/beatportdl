@@ -10,7 +10,6 @@ import (
 	"unspok3n/beatportdl/internal/beatport"
 )
 
-const authUrl = "https://api.beatport.com/v4/auth/o/authorize/?client_id=ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ&response_type=code"
 const (
 	configFilename = "beatportdl-config.yml"
 	cacheFilename  = "beatportdl-credentials.json"
@@ -88,18 +87,21 @@ func main() {
 				LogError("parse url", err)
 				return
 			}
-			if link.Type == beatport.BeatportTrackLink {
+			if link.Type == beatport.TrackLink {
 				downloadsDirectory := app.config.DownloadsDirectory
 				track, err := app.bp.GetTrack(link.ID)
 				if err != nil {
 					LogError("fetch track", err)
 					return
 				}
+
 				if app.config.CreateReleaseDirectory {
 					release, err := app.bp.GetRelease(track.Release.ID)
 					if err != nil {
-						FatalError("fetch release", err)
+						LogError("fetch release", err)
+						return
 					}
+
 					releaseDirectory := release.DirectoryName(app.config.ReleaseDirectoryTemplate)
 					if app.config.WhitespaceCharacter != " " {
 						releaseDirectory = strings.Replace(
@@ -113,6 +115,7 @@ func main() {
 						downloadsDirectory,
 						releaseDirectory,
 					)
+
 				}
 				if _, err := os.Stat(downloadsDirectory); os.IsNotExist(err) {
 					if err := os.MkdirAll(downloadsDirectory, 0760); err != nil {
@@ -124,7 +127,7 @@ func main() {
 					LogError("save track", err)
 					return
 				}
-			} else if link.Type == beatport.BeatportReleaseLink {
+			} else if link.Type == beatport.ReleaseLink {
 				release, err := app.bp.GetRelease(link.ID)
 				if err != nil {
 					LogError("fetch release", err)
@@ -177,7 +180,7 @@ func main() {
 	Pause()
 }
 
-func (app *application) saveTrack(track beatport.BeatportTrack, directory string) error {
+func (app *application) saveTrack(track beatport.Track, directory string) error {
 	fmt.Printf("Downloading %s (%s)\n", track.Name, track.MixName)
 	stream, err := app.bp.DownloadTrack(track.ID)
 	if err != nil {

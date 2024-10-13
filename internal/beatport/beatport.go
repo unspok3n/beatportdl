@@ -19,8 +19,14 @@ type Beatport struct {
 	client        *http.Client
 }
 
-type BeatportError struct {
+type Error struct {
 	Detail string `json:"detail"`
+}
+
+type Image struct {
+	ID         int64  `json:"id"`
+	URI        string `json:"uri"`
+	DynamicURI string `json:"dynamic_uri"`
 }
 
 type tokenPair struct {
@@ -217,7 +223,7 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 			return b.fetch(method, endpoint, payload, contentType)
 		}
 		defer resp.Body.Close()
-		response := &BeatportError{}
+		response := &Error{}
 		if err = json.NewDecoder(resp.Body).Decode(response); err == nil {
 			return nil, fmt.Errorf(
 				"request failed with status code: %d - %s",

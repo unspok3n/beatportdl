@@ -7,17 +7,17 @@ import (
 	"strings"
 )
 
-type BeatportRelease struct {
-	ID            int64            `json:"id"`
-	Name          string           `json:"name"`
-	Artists       []BeatportArtist `json:"artists"`
-	Remixers      []BeatportArtist `json:"remixers"`
-	CatalogNumber string           `json:"catalog_number"`
-	Date          string           `json:"new_release_date"`
-	TrackUrls     []string         `json:"tracks"`
+type Release struct {
+	ID            int64    `json:"id"`
+	Name          string   `json:"name"`
+	Artists       []Artist `json:"artists"`
+	Remixers      []Artist `json:"remixers"`
+	CatalogNumber string   `json:"catalog_number"`
+	Date          string   `json:"new_release_date"`
+	TrackUrls     []string `json:"tracks"`
 }
 
-func (b *Beatport) GetRelease(id int64) (*BeatportRelease, error) {
+func (b *Beatport) GetRelease(id int64) (*Release, error) {
 	res, err := b.fetch(
 		"GET",
 		fmt.Sprintf("/catalog/releases/%d/", id),
@@ -28,14 +28,14 @@ func (b *Beatport) GetRelease(id int64) (*BeatportRelease, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	response := &BeatportRelease{}
+	response := &Release{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
 	return response, nil
 }
 
-func (r *BeatportRelease) DirectoryName(template string) string {
+func (r *Release) DirectoryName(template string) string {
 	var artistNames []string
 	var remixerNames []string
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}

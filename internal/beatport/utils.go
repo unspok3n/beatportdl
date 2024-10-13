@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-type BeatportLinkType string
+type LinkType string
 
 var (
-	BeatportTrackLink   BeatportLinkType = "tracks"
-	BeatportReleaseLink BeatportLinkType = "releases"
+	TrackLink   LinkType = "tracks"
+	ReleaseLink LinkType = "releases"
 )
 
-type BeatportLink struct {
-	Type BeatportLinkType
+type Link struct {
+	Type LinkType
 	ID   int64
 }
 
@@ -25,7 +25,7 @@ var (
 	ErrInvalidUrl = errors.New("invalid url")
 )
 
-func (b *Beatport) ParseUrl(inputURL string) (*BeatportLink, error) {
+func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 	u, err := url.Parse(inputURL)
 	if err != nil {
 		return nil, err
@@ -38,11 +38,11 @@ func (b *Beatport) ParseUrl(inputURL string) (*BeatportLink, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
 		}
-		linkType := BeatportTrackLink
+		linkType := TrackLink
 		if segments[0] == "release" {
-			linkType = BeatportReleaseLink
+			linkType = ReleaseLink
 		}
-		return &BeatportLink{
+		return &Link{
 			Type: linkType,
 			ID:   id,
 		}, nil
@@ -53,11 +53,11 @@ func (b *Beatport) ParseUrl(inputURL string) (*BeatportLink, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
 		}
-		linkType := BeatportTrackLink
+		linkType := TrackLink
 		if segments[2] == "releases" {
-			linkType = BeatportReleaseLink
+			linkType = ReleaseLink
 		}
-		return &BeatportLink{
+		return &Link{
 			Type: linkType,
 			ID:   id,
 		}, nil
