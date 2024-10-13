@@ -206,7 +206,7 @@ func (app *application) saveTrack(track beatport.Track, directory string) error 
 		return err
 	}
 	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
-	filePath := fmt.Sprintf("%s/%s", directory, fileName)
+	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, stream.StreamQuality)
 	if err = app.downloadFile(stream.Location, filePath); err != nil {
 		return err
 	}

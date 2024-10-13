@@ -75,7 +75,7 @@ func (t *Track) Filename(template string, whitespace string) string {
 		fileName = strings.Replace(fileName, " ", whitespace, -1)
 	}
 
-	return fileName + ".flac"
+	return fileName
 }
 
 func (b *Beatport) GetTrack(id int64) (*Track, error) {
