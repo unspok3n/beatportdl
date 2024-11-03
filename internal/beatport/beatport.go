@@ -20,7 +20,8 @@ type Beatport struct {
 }
 
 type Error struct {
-	Detail string `json:"detail"`
+	Detail *string `json:"detail,omitempty"`
+	Error  *string `json:"error,omitempty"`
 }
 
 type Image struct {
@@ -225,10 +226,16 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 		defer resp.Body.Close()
 		response := &Error{}
 		if err = json.NewDecoder(resp.Body).Decode(response); err == nil {
+			detail := "Unknown error"
+			if response.Detail != nil {
+				detail = *response.Detail
+			} else if response.Error != nil {
+				detail = *response.Error
+			}
 			return nil, fmt.Errorf(
 				"request failed with status code: %d - %s",
 				resp.StatusCode,
-				response.Detail,
+				detail,
 			)
 		}
 		return nil, fmt.Errorf("request failed with status code: %d", resp.StatusCode)
