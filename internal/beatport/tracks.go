@@ -3,6 +3,7 @@ package beatport
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -96,10 +97,14 @@ func (b *Beatport) GetTrack(id int64) (*Track, error) {
 	return response, nil
 }
 
-func (b *Beatport) DownloadTrack(id int64) (*TrackStream, error) {
+func (b *Beatport) DownloadTrack(id int64, quality string) (*TrackStream, error) {
 	res, err := b.fetch(
 		"GET",
-		fmt.Sprintf("/catalog/tracks/%d/download/", id),
+		fmt.Sprintf(
+			"/catalog/tracks/%d/download/?quality=%s",
+			id,
+			url.QueryEscape(quality),
+		),
 		nil,
 		"",
 	)

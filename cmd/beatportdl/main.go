@@ -47,7 +47,7 @@ func main() {
 		}
 	}
 
-	parsedConfig, err := config.ParseConfig(configFilePath)
+	parsedConfig, err := config.Parse(configFilePath)
 	if err != nil {
 		FatalError("load config", err)
 	}
@@ -155,7 +155,7 @@ func main() {
 					}
 				}
 
-				if err := app.saveTrack(*track, downloadsDirectory); err != nil {
+				if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
 					LogError("save track", err)
 					return
 				}
@@ -205,7 +205,7 @@ func main() {
 							LogError("fetch track", err)
 							return
 						}
-						if err := app.saveTrack(*track, downloadsDirectory); err != nil {
+						if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
 							LogError("save track", err)
 							return
 						}
@@ -220,8 +220,8 @@ func main() {
 	Pause()
 }
 
-func (app *application) saveTrack(track beatport.Track, directory string) error {
-	stream, err := app.bp.DownloadTrack(track.ID)
+func (app *application) saveTrack(track beatport.Track, directory string, quality string) error {
+	stream, err := app.bp.DownloadTrack(track.ID, quality)
 	if err != nil {
 		return err
 	}

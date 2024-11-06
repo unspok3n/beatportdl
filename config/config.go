@@ -2,14 +2,16 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 type AppConfig struct {
 	Username                 string `yaml:"username,omitempty"`
 	Password                 string `yaml:"password,omitempty"`
 	DownloadsDirectory       string `yaml:"downloads_directory,omitempty"`
+	Quality                  string `yaml:"quality,omitempty"`
 	CreateReleaseDirectory   bool   `yaml:"create_release_directory,omitempty"`
 	CoverSize                string `yaml:"cover_size,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
@@ -18,12 +20,13 @@ type AppConfig struct {
 	Proxy                    string `yaml:"proxy,omitempty"`
 }
 
-func ParseConfig(filePath string) (*AppConfig, error) {
+func Parse(filePath string) (*AppConfig, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	config := AppConfig{
+		Quality:                  "lossless",
 		TrackFileTemplate:        "{number}. {artists} - {name} ({mix_name})",
 		ReleaseDirectoryTemplate: "[{catalog_number}] {artists} - {name}",
 	}
