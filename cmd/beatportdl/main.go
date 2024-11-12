@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -52,9 +53,6 @@ func main() {
 		FatalError("load config", err)
 	}
 
-	flag.Parse()
-	urls := flag.Args()
-
 	execCachePath, err := ExecutableDirFilePath(cacheFilename)
 	if err != nil {
 		FatalError("get executable path", err)
@@ -93,6 +91,30 @@ func main() {
 	app := &application{
 		config: parsedConfig,
 		bp:     bpClient,
+	}
+
+	flag.Parse()
+	inputArgs := flag.Args()
+
+	var urls []string
+
+	for _, arg := range inputArgs {
+		if strings.HasSuffix(arg, ".txt") {
+			file, err := os.Open(arg)
+			if err != nil {
+				FatalError("read input text file", err)
+			}
+			scanner := bufio.NewScanner(file)
+			scanner.Split(bufio.ScanLines)
+
+			for scanner.Scan() {
+				urls = append(urls, scanner.Text())
+			}
+
+			file.Close()
+		} else {
+			urls = append(urls, arg)
+		}
 	}
 
 	if len(urls) == 0 {
