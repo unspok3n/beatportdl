@@ -32,8 +32,14 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 	}
 
 	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
+	segmentsLength := len(segments)
 
-	if len(segments) >= 3 && (segments[0] == "track" || segments[0] == "release") {
+	if segmentsLength == 4 && len(segments[0]) == 2 && segments[0] != "v4" {
+		segments = segments[1:]
+		segmentsLength--
+	}
+
+	if segmentsLength >= 3 && (segments[0] == "track" || segments[0] == "release") {
 		id, err := strconv.ParseInt(segments[2], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
@@ -48,7 +54,7 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 		}, nil
 	}
 
-	if len(segments) >= 4 && (segments[2] == "tracks" || segments[2] == "releases") {
+	if segmentsLength >= 4 && (segments[2] == "tracks" || segments[2] == "releases") {
 		id, err := strconv.ParseInt(segments[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
