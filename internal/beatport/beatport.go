@@ -40,8 +40,7 @@ type tokenPair struct {
 }
 
 const (
-	clientId     = "nBQh4XCUqE0cpoy609mC8GoyjCcJHBwbI374FYmE"
-	clientSecret = "7oBWZwYOia9u4yblRmVTTet5sficrN7xbbCglbmRxoN08ShlpxyXbixLeov2wC62R3WsD2dxSTwLosi71FqpfLSOKnFSZ4FTXoayHNLHpWz7XcmyOMiLkqnbTPk2kI9L"
+	clientId = "nBQh4XCUqE0cpoy609mC8GoyjCcJHBwbI374FYmE"
 )
 
 const (
@@ -123,11 +122,10 @@ func (b *Beatport) refreshToken() (*tokenPair, error) {
 
 func (b *Beatport) Authorize() error {
 	payload := map[string]string{
-		"client_id":     clientId,
-		"client_secret": clientSecret,
-		"grant_type":    "password",
-		"username":      b.username,
-		"password":      b.password,
+		"client_id":  clientId,
+		"grant_type": "password",
+		"username":   b.username,
+		"password":   b.password,
 	}
 
 	res, err := b.fetch("POST", authEndpoint, payload, "application/x-www-form-urlencoded")
@@ -219,7 +217,7 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusUnauthorized {
+		if resp.StatusCode == http.StatusUnauthorized && endpoint != authEndpoint {
 			b.tokenPair.IssuedAt = 0
 			return b.fetch(method, endpoint, payload, contentType)
 		}
