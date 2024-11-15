@@ -57,7 +57,7 @@ Config options
 Download quality:\
 `medium` - 128 kbps AAC\
 `high` - 256 kbps AAC\
-`flac` - 44.1 khz FLAC
+`lossless` - 44.1 khz FLAC
 
 Available template keywords:
 * Track: `id`,`name`,`mix_name`,`artists`,`remixers`,`number`,`key`,`bpm`,`genre`,`isrc`
