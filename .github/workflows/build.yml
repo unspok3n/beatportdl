@@ -11,9 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./beatportdl
 
     strategy:
       matrix:
@@ -38,10 +35,10 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
-        run: go build -o example-${{ matrix.os }}-${{ matrix.arch }} ./cmd/beatportdl
+        run: go build -o beatportdl-${{ matrix.os }}-${{ matrix.arch }} ./cmd/beatportdl
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: beatportdl/beatportdl-${{ matrix.os }}-${{ matrix.arch }}
-          path: beatportdl/beatportdl-${{ matrix.os }}-${{ matrix.arch }}
+          name: beatportdl-${{ matrix.os }}-${{ matrix.arch }}
+          path: beatportdl-${{ matrix.os }}-${{ matrix.arch }}
