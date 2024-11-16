@@ -117,129 +117,131 @@ func main() {
 		}
 	}
 
-	if len(urls) == 0 {
-		fmt.Print("Enter track or release link: ")
-		input := GetLine()
-		urls = append(urls, input)
-	}
+	for {
+		if len(urls) == 0 {
+			fmt.Print("Enter track or release link: ")
+			input := GetLine()
+			urls = append(urls, input)
+		}
 
-	for _, input := range urls {
-		app.background(func() {
-			link, err := app.bp.ParseUrl(input)
-			if err != nil {
-				LogError("parse url", err)
-				return
-			}
-			if link.Type == beatport.TrackLink {
-				downloadsDirectory := app.config.DownloadsDirectory
-				track, err := app.bp.GetTrack(link.ID)
+		for _, input := range urls {
+			app.background(func() {
+				link, err := app.bp.ParseUrl(input)
 				if err != nil {
-					LogError("fetch track", err)
+					LogError("parse url", err)
 					return
 				}
+				if link.Type == beatport.TrackLink {
+					downloadsDirectory := app.config.DownloadsDirectory
+					track, err := app.bp.GetTrack(link.ID)
+					if err != nil {
+						LogError("fetch track", err)
+						return
+					}
 
-				var coverPath string
-				var coverUrl string
+					var coverPath string
+					var coverUrl string
 
-				if app.config.CreateReleaseDirectory {
-					release, err := app.bp.GetRelease(track.Release.ID)
+					if app.config.CreateReleaseDirectory {
+						release, err := app.bp.GetRelease(track.Release.ID)
+						if err != nil {
+							LogError("fetch release", err)
+							return
+						}
+						releaseDirectory := release.DirectoryName(
+							app.config.ReleaseDirectoryTemplate,
+							app.config.WhitespaceCharacter,
+						)
+						downloadsDirectory = fmt.Sprintf("%s/%s",
+							downloadsDirectory,
+							releaseDirectory,
+						)
+						if app.config.CoverSize != "" {
+							coverUrl = strings.Replace(
+								release.Image.DynamicURI,
+								"{w}x{h}",
+								app.config.CoverSize,
+								-1,
+							)
+							coverPath = downloadsDirectory + "/cover.jpg"
+						}
+					}
+
+					if err := CreateDirectory(downloadsDirectory); err != nil {
+						LogError("create downloads directory", err)
+						return
+					}
+
+					if coverUrl != "" && coverPath != "" {
+						if err = app.downloadFile(coverUrl, coverPath); err != nil {
+							LogError("download cover", err)
+						}
+					}
+
+					if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
+						LogError("save track", err)
+						return
+					}
+
+				} else if link.Type == beatport.ReleaseLink {
+					release, err := app.bp.GetRelease(link.ID)
 					if err != nil {
 						LogError("fetch release", err)
 						return
 					}
-					releaseDirectory := release.DirectoryName(
-						app.config.ReleaseDirectoryTemplate,
-						app.config.WhitespaceCharacter,
-					)
-					downloadsDirectory = fmt.Sprintf("%s/%s",
-						downloadsDirectory,
-						releaseDirectory,
-					)
+
+					downloadsDirectory := app.config.DownloadsDirectory
+					if app.config.CreateReleaseDirectory {
+						releaseDirectory := release.DirectoryName(
+							app.config.ReleaseDirectoryTemplate,
+							app.config.WhitespaceCharacter,
+						)
+						downloadsDirectory = fmt.Sprintf("%s/%s",
+							app.config.DownloadsDirectory,
+							releaseDirectory,
+						)
+					}
+
+					if err := CreateDirectory(downloadsDirectory); err != nil {
+						LogError("create downloads directory", err)
+						return
+					}
+
 					if app.config.CoverSize != "" {
-						coverUrl = strings.Replace(
+						coverUrl := strings.Replace(
 							release.Image.DynamicURI,
 							"{w}x{h}",
 							app.config.CoverSize,
 							-1,
 						)
-						coverPath = downloadsDirectory + "/cover.jpg"
-					}
-				}
-
-				if err := CreateDirectory(downloadsDirectory); err != nil {
-					LogError("create downloads directory", err)
-					return
-				}
-
-				if coverUrl != "" && coverPath != "" {
-					if err = app.downloadFile(coverUrl, coverPath); err != nil {
-						LogError("download cover", err)
-					}
-				}
-
-				if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
-					LogError("save track", err)
-					return
-				}
-
-			} else if link.Type == beatport.ReleaseLink {
-				release, err := app.bp.GetRelease(link.ID)
-				if err != nil {
-					LogError("fetch release", err)
-					return
-				}
-
-				downloadsDirectory := app.config.DownloadsDirectory
-				if app.config.CreateReleaseDirectory {
-					releaseDirectory := release.DirectoryName(
-						app.config.ReleaseDirectoryTemplate,
-						app.config.WhitespaceCharacter,
-					)
-					downloadsDirectory = fmt.Sprintf("%s/%s",
-						app.config.DownloadsDirectory,
-						releaseDirectory,
-					)
-				}
-
-				if err := CreateDirectory(downloadsDirectory); err != nil {
-					LogError("create downloads directory", err)
-					return
-				}
-
-				if app.config.CoverSize != "" {
-					coverUrl := strings.Replace(
-						release.Image.DynamicURI,
-						"{w}x{h}",
-						app.config.CoverSize,
-						-1,
-					)
-					coverPath := downloadsDirectory + "/cover.jpg"
-					if err = app.downloadFile(coverUrl, coverPath); err != nil {
-						LogError("download cover", err)
-					}
-				}
-
-				for _, trackUrl := range release.TrackUrls {
-					app.background(func() {
-						trackLink, _ := app.bp.ParseUrl(trackUrl)
-						track, err := app.bp.GetTrack(trackLink.ID)
-						if err != nil {
-							LogError("fetch track", err)
-							return
+						coverPath := downloadsDirectory + "/cover.jpg"
+						if err = app.downloadFile(coverUrl, coverPath); err != nil {
+							LogError("download cover", err)
 						}
-						if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
-							LogError("save track", err)
-							return
-						}
-					})
+					}
+
+					for _, trackUrl := range release.TrackUrls {
+						app.background(func() {
+							trackLink, _ := app.bp.ParseUrl(trackUrl)
+							track, err := app.bp.GetTrack(trackLink.ID)
+							if err != nil {
+								LogError("fetch track", err)
+								return
+							}
+							if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
+								LogError("save track", err)
+								return
+							}
+						})
+					}
 				}
-			}
-		})
+			})
+		}
+
+		app.wg.Wait()
+
+		urls = []string{}
 	}
-
-	app.wg.Wait()
-
-	Pause()
 }
 
 func (app *application) saveTrack(track beatport.Track, directory string, quality string) error {
