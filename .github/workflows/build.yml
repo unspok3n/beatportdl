@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./beatportdl
 
     strategy:
       matrix:
@@ -40,5 +43,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: beatportdl-${{ matrix.os }}-${{ matrix.arch }}
-          path: beatportdl-${{ matrix.os }}-${{ matrix.arch }}
+          name: beatportdl/beatportdl-${{ matrix.os }}-${{ matrix.arch }}
+          path: beatportdl/beatportdl-${{ matrix.os }}-${{ matrix.arch }}
