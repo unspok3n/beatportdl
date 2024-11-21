@@ -32,16 +32,16 @@ func main() {
 			FatalError("get executable path", err)
 		}
 
-		// fmt.Print("Username: ")
-		// username := GetLine()
-		// fmt.Print("Password: ")
-		// password := GetLine()
+		fmt.Print("Username: ")
+		username := GetLine()
+		fmt.Print("Password: ")
+		password := GetLine()
 		fmt.Print("Downloads directory: ")
 		downloadsDir := GetLine()
 
 		cfg := &config.AppConfig{
-			// Username:           username,
-			// Password:           password,
+			Username:           username,
+			Password:           password,
 			DownloadsDirectory: downloadsDir,
 		}
 		if err := cfg.Save(configFilePath); err != nil {
@@ -82,28 +82,10 @@ func main() {
 		FatalError("beatport api client", err)
 	}
 
-	authorizeFlag := flag.Bool("authorize", false, "Start the authorization process")
-	flag.Parse()
-
 	if err := bpClient.LoadCachedTokenPair(); err != nil {
-		fmt.Println("Credentials cache not found")
-		*authorizeFlag = true
-		// fmt.Println("Authorizing")
-		// if err := bpClient.Authorize(); err != nil {
-		// 	FatalError("beatport", err)
-		// }
-	}
-
-	if *authorizeFlag {
-		message := `In your browser, open the following url, login if necessary, and then copy the "code" parameter from the address bar`
-		fmt.Println(message)
-		fmt.Print(authUrl + "\n\n")
-		fmt.Print("Enter authorization code: ")
-		code := GetLine()
-		if err := bpClient.AuthorizeWithCode(code); err != nil {
+		if err := bpClient.NewTokenPair(); err != nil {
 			FatalError("beatport", err)
 		}
-		fmt.Println("Successfully authorized!")
 	}
 
 	app := &application{

@@ -17,6 +17,7 @@ type Beatport struct {
 	tokenPair     *tokenPair
 	cacheFilePath string
 	client        *http.Client
+	headers       map[string]string
 }
 
 type Error struct {
@@ -44,8 +45,15 @@ const (
 )
 
 const (
-	baseUrl      = "https://api.beatport.com/v4"
-	authEndpoint = "/auth/o/token/"
+	baseUrl       = "https://api.beatport.com/v4"
+	tokenEndpoint = "/auth/o/token/"
+	authEndpoint  = "/auth/o/authorize/?client_id=" + clientId + "&response_type=code"
+	loginEndpoint = "/auth/login/"
+)
+
+var (
+	ErrInvalidAuthorizationCode = errors.New("invalid authorization code")
+	ErrInvalidSessionCookie     = errors.New("invalid session cookie")
 )
 
 func New(username string, password string, cacheFilePath string, proxyUrl string) (*Beatport, error) {
@@ -55,6 +63,12 @@ func New(username string, password string, cacheFilePath string, proxyUrl string
 		proxy := http.ProxyURL(proxyURL)
 		transport.Proxy = proxy
 	}
+	headers := map[string]string{
+		"accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+		"accept-language": "en-US,en;q=0.9",
+		"cache-control":   "max-age=0",
+		"user-agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+	}
 	bp := Beatport{
 		username:      username,
 		password:      password,
@@ -62,7 +76,11 @@ func New(username string, password string, cacheFilePath string, proxyUrl string
 		client: &http.Client{
 			Timeout:   time.Duration(40) * time.Second,
 			Transport: transport,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
+		headers: headers,
 	}
 
 	return &bp, nil
@@ -104,7 +122,7 @@ func (b *Beatport) refreshToken() (*tokenPair, error) {
 		"grant_type":    "refresh_token",
 	}
 
-	res, err := b.fetch("POST", authEndpoint, payload, "application/x-www-form-urlencoded")
+	res, err := b.fetch("POST", tokenEndpoint, payload, "application/x-www-form-urlencoded")
 	if err != nil {
 		return nil, err
 	}
@@ -120,15 +138,21 @@ func (b *Beatport) refreshToken() (*tokenPair, error) {
 	return response, nil
 }
 
-func (b *Beatport) Authorize() error {
+func (b *Beatport) authorize(code string) error {
 	payload := map[string]string{
-		"client_id":  clientId,
-		"grant_type": "password",
-		"username":   b.username,
-		"password":   b.password,
+		"client_id": clientId,
 	}
 
-	res, err := b.fetch("POST", authEndpoint, payload, "application/x-www-form-urlencoded")
+	if code != "" {
+		payload["grant_type"] = "authorization_code"
+		payload["code"] = code
+	} else {
+		payload["grant_type"] = "password"
+		payload["username"] = b.username
+		payload["password"] = b.password
+	}
+
+	res, err := b.fetch("POST", tokenEndpoint, payload, "application/x-www-form-urlencoded")
 	if err != nil {
 		return err
 	}
@@ -147,29 +171,59 @@ func (b *Beatport) Authorize() error {
 	return nil
 }
 
-func (b *Beatport) AuthorizeWithCode(code string) error {
+func (b *Beatport) parseAuthorizationCode(sessionId string) (string, error) {
+	b.headers["cookie"] = fmt.Sprintf("sessionid=%s", sessionId)
+	res, err := b.fetch("GET", authEndpoint, nil, "")
+	if err != nil {
+		return "", err
+	}
+	redirectUrl := res.Header.Get("Location")
+	parsedUrl, err := url.Parse(redirectUrl)
+	if err != nil {
+		return "", err
+	}
+	query, _ := url.ParseQuery(parsedUrl.RawQuery)
+	code := query.Get("code")
+	if code != "" {
+		return code, nil
+	}
+	return "", ErrInvalidAuthorizationCode
+}
+
+func (b *Beatport) login() (string, error) {
 	payload := map[string]string{
-		"client_id":  clientId,
-		"grant_type": "authorization_code",
-		"code":       code,
+		"username": b.username,
+		"password": b.password,
 	}
 
-	res, err := b.fetch("POST", authEndpoint, payload, "application/x-www-form-urlencoded")
+	res, err := b.fetch("POST", loginEndpoint, payload, "application/json")
+	if err != nil {
+		return "", err
+	}
+	cookies := res.Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == "sessionid" {
+			return cookie.Value, nil
+		}
+	}
+	return "", ErrInvalidSessionCookie
+}
+
+func (b *Beatport) NewTokenPair() error {
+	fmt.Println("Logging in")
+	sessionId, err := b.login()
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
-	response := &tokenPair{}
-	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
-		return err
-	}
-	b.tokenPair = response
-	b.tokenPair.IssuedAt = time.Now().Unix()
-	err = b.cacheTokenPair()
+	fmt.Println("Authorizing")
+	authorizationCode, err := b.parseAuthorizationCode(sessionId)
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("Issuing token")
+	if err := b.authorize(authorizationCode); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -193,18 +247,16 @@ func encodeFormPayload(payload interface{}) (url.Values, error) {
 func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentType string) (*http.Response, error) {
 	var body bytes.Buffer
 
-	if endpoint != authEndpoint {
+	if endpoint != tokenEndpoint && endpoint != authEndpoint && endpoint != loginEndpoint {
 		currentTime := time.Now().Unix()
 		tokenExpirationTime := b.tokenPair.IssuedAt + b.tokenPair.ExpiresIn
 		if currentTime+300 >= tokenExpirationTime {
 			fmt.Println("Refreshing token")
 			_, err := b.refreshToken()
 			if err != nil {
-				return nil, fmt.Errorf("invalid referesh token: %w", err)
-				// fmt.Println("Authorizing")
-				// if err := b.Authorize(); err != nil {
-				// 	return nil, fmt.Errorf("invalid token and authorization error: %w", err)
-				// }
+				if err := b.NewTokenPair(); err != nil {
+					return nil, fmt.Errorf("invalid token and authorization error: %w", err)
+				}
 			}
 		}
 	}
@@ -231,6 +283,10 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
+	for key, value := range b.headers {
+		req.Header.Add(key, value)
+	}
+
 	if payload != nil {
 		req.Header.Set("Content-Type", contentType)
 	}
@@ -243,8 +299,8 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusUnauthorized && endpoint != authEndpoint {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
+		if resp.StatusCode == http.StatusUnauthorized && endpoint != tokenEndpoint && endpoint != authEndpoint && endpoint != loginEndpoint {
 			b.tokenPair.IssuedAt = 0
 			return b.fetch(method, endpoint, payload, contentType)
 		}
