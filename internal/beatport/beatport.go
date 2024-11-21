@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type Beatport struct {
 	cacheFilePath string
 	client        *http.Client
 	headers       map[string]string
+	mutex         sync.RWMutex
 }
 
 type Error struct {
@@ -249,15 +251,21 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 
 	if endpoint != tokenEndpoint && endpoint != authEndpoint && endpoint != loginEndpoint {
 		currentTime := time.Now().Unix()
+
+		b.mutex.RLock()
 		tokenExpirationTime := b.tokenPair.IssuedAt + b.tokenPair.ExpiresIn
+		b.mutex.RUnlock()
 		if currentTime+300 >= tokenExpirationTime {
+			b.mutex.Lock()
 			fmt.Println("Refreshing token")
 			_, err := b.refreshToken()
 			if err != nil {
 				if err := b.NewTokenPair(); err != nil {
+					b.mutex.Unlock()
 					return nil, fmt.Errorf("invalid token and authorization error: %w", err)
 				}
 			}
+			b.mutex.Unlock()
 		}
 	}
 
@@ -301,7 +309,9 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
 		if resp.StatusCode == http.StatusUnauthorized && endpoint != tokenEndpoint && endpoint != authEndpoint && endpoint != loginEndpoint {
+			b.mutex.Lock()
 			b.tokenPair.IssuedAt = 0
+			b.mutex.Unlock()
 			return b.fetch(method, endpoint, payload, contentType)
 		}
 		defer resp.Body.Close()

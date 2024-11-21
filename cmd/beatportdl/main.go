@@ -93,6 +93,7 @@ func main() {
 		bp:     bpClient,
 	}
 
+	flag.Parse()
 	inputArgs := flag.Args()
 
 	var urls []string
