@@ -35,9 +35,9 @@ func Parse(filePath string) (*AppConfig, error) {
 		return nil, fmt.Errorf("failed to decode config file: %w", err)
 	}
 
-	if config.Username == "" || config.Password == "" {
-		return nil, fmt.Errorf("username or password is not provided")
-	}
+	// if config.Username == "" || config.Password == "" {
+	// 	return nil, fmt.Errorf("username or password is not provided")
+	// }
 
 	if config.DownloadsDirectory == "" {
 		return nil, fmt.Errorf("no downloads directory provided")

@@ -40,7 +40,7 @@ type tokenPair struct {
 }
 
 const (
-	clientId = "nBQh4XCUqE0cpoy609mC8GoyjCcJHBwbI374FYmE"
+	clientId = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
 )
 
 const (
@@ -147,6 +147,32 @@ func (b *Beatport) Authorize() error {
 	return nil
 }
 
+func (b *Beatport) AuthorizeWithCode(code string) error {
+	payload := map[string]string{
+		"client_id":  clientId,
+		"grant_type": "authorization_code",
+		"code":       code,
+	}
+
+	res, err := b.fetch("POST", authEndpoint, payload, "application/x-www-form-urlencoded")
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	response := &tokenPair{}
+	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
+		return err
+	}
+	b.tokenPair = response
+	b.tokenPair.IssuedAt = time.Now().Unix()
+	err = b.cacheTokenPair()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func encodeFormPayload(payload interface{}) (url.Values, error) {
 	values := url.Values{}
 
@@ -174,10 +200,11 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 			fmt.Println("Refreshing token")
 			_, err := b.refreshToken()
 			if err != nil {
-				fmt.Println("Authorizing")
-				if err := b.Authorize(); err != nil {
-					return nil, fmt.Errorf("invalid token and authorization error: %w", err)
-				}
+				return nil, fmt.Errorf("invalid referesh token: %w", err)
+				// fmt.Println("Authorizing")
+				// if err := b.Authorize(); err != nil {
+				// 	return nil, fmt.Errorf("invalid token and authorization error: %w", err)
+				// }
 			}
 		}
 	}
