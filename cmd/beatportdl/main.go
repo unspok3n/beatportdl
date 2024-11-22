@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"unspok3n/beatportdl/config"
@@ -119,9 +120,64 @@ func main() {
 
 	for {
 		if len(urls) == 0 {
-			fmt.Print("Enter track or release link: ")
+			fmt.Print("Enter track or release link or search query: ")
 			input := GetLine()
-			urls = append(urls, input)
+			if strings.HasPrefix(input, "https://www.beatport.com") {
+				urls = append(urls, input)
+			} else {
+				results, err := bpClient.Search(input)
+				if err != nil {
+					FatalError("beatport", err)
+				}
+				trackResultsLen := len(results.Tracks)
+				releasesResultsLen := len(results.Releases)
+
+				if trackResultsLen+releasesResultsLen == 0 {
+					fmt.Println("No results found")
+					continue
+				}
+
+				fmt.Println("Search results:")
+				fmt.Println("[ Tracks ]")
+				for i, track := range results.Tracks {
+					fmt.Printf(
+						"%2d. %s - %s (%s) [%s]\n", i+1,
+						track.ArtistsDisplay(beatport.ArtistTypeMain),
+						track.Name,
+						track.MixName,
+						track.Length,
+					)
+				}
+				fmt.Println("\n[ Releases ]")
+				indexOffset := trackResultsLen + 1
+				for i, release := range results.Releases {
+					fmt.Printf(
+						"%2d. %s - %s [%s]\n", i+indexOffset,
+						release.ArtistsDisplay(beatport.ArtistTypeMain),
+						release.Name,
+						release.Label.Name,
+					)
+				}
+				fmt.Print("Enter the result number(s): ")
+				input = GetLine()
+				requestedResults := strings.Split(input, " ")
+				for _, result := range requestedResults {
+					resultInt, err := strconv.Atoi(result)
+					if err != nil {
+						FatalError("invalid result number", err)
+					}
+
+					if resultInt-1 > releasesResultsLen+trackResultsLen {
+						FatalError("invalid result number", err)
+					}
+
+					if resultInt >= indexOffset {
+						urls = append(urls, results.Releases[resultInt-indexOffset].URL)
+					} else {
+						urls = append(urls, results.Tracks[resultInt-1].URL)
+					}
+				}
+			}
 		}
 
 		for _, input := range urls {

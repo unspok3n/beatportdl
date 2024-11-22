@@ -17,9 +17,11 @@ type Track struct {
 	BPM      int      `json:"bpm"`
 	Genre    Genre    `json:"genre"`
 	ISRC     string   `json:"isrc"`
+	Length   string   `json:"length"`
 	Artists  []Artist `json:"artists"`
 	Remixers []Artist `json:"remixers"`
 	Release  Release  `json:"release"`
+	URL      string   `json:"url"`
 }
 
 type TrackKey struct {
@@ -35,20 +37,26 @@ type TrackStream struct {
 	StreamQuality string `json:"stream_quality"`
 }
 
-func (t *Track) Filename(template string, whitespace string) string {
+func (t *Track) ArtistsDisplay(aType ArtistType) string {
 	var artistNames []string
-	var remixerNames []string
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
-
-	for _, artist := range t.Artists {
+	var artists []Artist
+	if aType != ArtistTypeMain {
+		artists = t.Remixers
+	} else {
+		artists = t.Artists
+	}
+	for _, artist := range artists {
 		artistNames = append(artistNames, artist.Name)
 	}
 	artistsString := strings.Join(artistNames, ", ")
+	return artistsString
+}
 
-	for _, artist := range t.Remixers {
-		remixerNames = append(remixerNames, artist.Name)
-	}
-	remixersString := strings.Join(remixerNames, ", ")
+func (t *Track) Filename(template string, whitespace string) string {
+	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
+
+	artistsString := t.ArtistsDisplay(ArtistTypeMain)
+	remixersString := t.ArtistsDisplay(ArtistTypeRemixers)
 
 	templateValues := map[string]string{
 		"id":       strconv.Itoa(int(t.ID)),

@@ -42,6 +42,13 @@ type tokenPair struct {
 	IssuedAt     int64  `json:"issued_at"`
 }
 
+type ArtistType string
+
+var (
+	ArtistTypeMain     ArtistType = "main"
+	ArtistTypeRemixers ArtistType = "remixers"
+)
+
 const (
 	clientId = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
 )

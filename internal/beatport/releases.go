@@ -13,9 +13,26 @@ type Release struct {
 	Artists       []Artist `json:"artists"`
 	Remixers      []Artist `json:"remixers"`
 	CatalogNumber string   `json:"catalog_number"`
+	Label         Label    `json:"label"`
 	Date          string   `json:"new_release_date"`
 	Image         Image    `json:"image"`
 	TrackUrls     []string `json:"tracks"`
+	URL           string   `json:"url"`
+}
+
+func (r *Release) ArtistsDisplay(aType ArtistType) string {
+	var artistNames []string
+	var artists []Artist
+	if aType != ArtistTypeMain {
+		artists = r.Remixers
+	} else {
+		artists = r.Artists
+	}
+	for _, artist := range artists {
+		artistNames = append(artistNames, artist.Name)
+	}
+	artistsString := strings.Join(artistNames, ", ")
+	return artistsString
 }
 
 func (b *Beatport) GetRelease(id int64) (*Release, error) {
@@ -37,19 +54,10 @@ func (b *Beatport) GetRelease(id int64) (*Release, error) {
 }
 
 func (r *Release) DirectoryName(template string, whitespace string) string {
-	var artistNames []string
-	var remixerNames []string
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
 
-	for _, artist := range r.Artists {
-		artistNames = append(artistNames, artist.Name)
-	}
-	artistsString := strings.Join(artistNames, ", ")
-
-	for _, artist := range r.Remixers {
-		remixerNames = append(remixerNames, artist.Name)
-	}
-	remixersString := strings.Join(remixerNames, ", ")
+	artistsString := r.ArtistsDisplay(ArtistTypeMain)
+	remixersString := r.ArtistsDisplay(ArtistTypeRemixers)
 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
