@@ -167,8 +167,9 @@ func main() {
 						FatalError("invalid result number", err)
 					}
 
-					if resultInt-1 > releasesResultsLen+trackResultsLen {
-						FatalError("invalid result number", err)
+					if resultInt > releasesResultsLen+trackResultsLen || resultInt == 0 {
+						fmt.Printf("invalid result number: %d\n", resultInt)
+						continue
 					}
 
 					if resultInt >= indexOffset {
