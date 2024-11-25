@@ -22,17 +22,6 @@ type Beatport struct {
 	mutex         sync.RWMutex
 }
 
-type Error struct {
-	Detail *string `json:"detail,omitempty"`
-	Error  *string `json:"error,omitempty"`
-}
-
-type Image struct {
-	ID         int64  `json:"id"`
-	URI        string `json:"uri"`
-	DynamicURI string `json:"dynamic_uri"`
-}
-
 type tokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -40,6 +29,26 @@ type tokenPair struct {
 	TokenType    string `json:"token_type"`
 	Scope        string `json:"scope"`
 	IssuedAt     int64  `json:"issued_at"`
+}
+
+type Error struct {
+	Detail *string `json:"detail,omitempty"`
+	Error  *string `json:"error,omitempty"`
+}
+
+type Paginated[T any] struct {
+	Next     *string `json:"next"`
+	Previous *string `json:"previous"`
+	Count    int     `json:"count"`
+	Page     string  `json:"page"`
+	PerPage  int     `json:"per_page"`
+	Results  []T     `json:"results"`
+}
+
+type Image struct {
+	ID         int64  `json:"id"`
+	URI        string `json:"uri"`
+	DynamicURI string `json:"dynamic_uri"`
 }
 
 type ArtistType string

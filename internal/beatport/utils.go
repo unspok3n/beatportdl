@@ -12,8 +12,10 @@ import (
 type LinkType string
 
 var (
-	TrackLink   LinkType = "tracks"
-	ReleaseLink LinkType = "releases"
+	TrackLink    LinkType = "tracks"
+	ReleaseLink  LinkType = "releases"
+	PlaylistLink LinkType = "playlists"
+	ChartLink    LinkType = "charts"
 )
 
 type Link struct {
@@ -39,14 +41,23 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 		segmentsLength--
 	}
 
-	if segmentsLength >= 3 && (segments[0] == "track" || segments[0] == "release") {
+	if segmentsLength >= 3 && (segments[0] == "track" || segments[0] == "release" || segments[0] == "playlists" || segments[0] == "chart") {
 		id, err := strconv.ParseInt(segments[2], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
 		}
-		linkType := TrackLink
-		if segments[0] == "release" {
+		var linkType LinkType
+		switch segments[0] {
+		case "track":
+			linkType = TrackLink
+		case "release":
 			linkType = ReleaseLink
+		case "playlists":
+			linkType = PlaylistLink
+		case "chart":
+			linkType = ChartLink
+		default:
+			return nil, fmt.Errorf("invalid link type: %s", segments[0])
 		}
 		return &Link{
 			Type: linkType,
@@ -59,9 +70,14 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
 		}
-		linkType := TrackLink
-		if segments[2] == "releases" {
+		var linkType LinkType
+		switch segments[2] {
+		case "tracks":
+			linkType = TrackLink
+		case "releases":
 			linkType = ReleaseLink
+		default:
+			return nil, fmt.Errorf("invalid link type: %s", segments[2])
 		}
 		return &Link{
 			Type: linkType,
