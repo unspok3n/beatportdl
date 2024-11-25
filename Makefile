@@ -1,20 +1,47 @@
-GO_CMD=go build
-SRC_DIR=./cmd/beatportdl
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 
-OUTPUT_DIR=./bin
+BUILD_CMD = go build -ldflags "-w -linkmode external -extldflags '-lstdc++'" -buildmode pie
+BUILD_SRC = ./cmd/beatportdl
+BUILD_DIR = ./bin
 
-APP_NAME=beatportdl
+ZIG_CC = zig cc
+ZIG_CXX = zig c++
 
-PLATFORMS := windows/amd64 linux/amd64 darwin/amd64 darwin/arm64
+MACOS_SDK_PATH ?= /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
 
-all: $(PLATFORMS)
+all: darwin-arm64 darwin-amd64 windows-amd64
 
-$(PLATFORMS):
-	@GOOS=$(word 1,$(subst /, ,$@)) GOARCH=$(word 2,$(subst /, ,$@)) \
-	$(GO_CMD) -o $(OUTPUT_DIR)/$(APP_NAME)-$(word 1,$(subst /, ,$@))-$(word 2,$(subst /, ,$@)) $(SRC_DIR)
-	@echo "Built $(APP_NAME)-$(word 1,$(subst /, ,$@))-$(word 2,$(subst /, ,$@))"
+darwin-arm64:
+	@echo "Building for macOS ARM64"
+	go clean -cache
+	CGO_ENABLED=1 \
+	GOOS=darwin \
+	GOARCH=arm64 \
+	CGO_LDFLAGS="-F${MACOS_SDK_PATH}/System/Library/Frameworks -L${MACOS_SDK_PATH}/usr/lib" \
+	CC="${ZIG_CC} -target aarch64-macos ${MACOS_ARM64_LIB_PATH} -isysroot ${MACOS_SDK_PATH} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks" \
+	CXX="${ZIG_CXX} -target aarch64-macos ${MACOS_ARM64_LIB_PATH} -isysroot ${MACOS_SDK_PATH} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks" \
+	${BUILD_CMD} -o=${BUILD_DIR}/beatportdl-darwin-arm64 ${BUILD_SRC}
 
-clean:
-	rm -rf $(OUTPUT_DIR)/*
+darwin-amd64:
+	@echo "Building for macOS AMD64"
+	go clean -cache
+	CGO_ENABLED=1 \
+	GOOS=darwin \
+	GOARCH=amd64 \
+	CGO_LDFLAGS="-F${MACOS_SDK_PATH}/System/Library/Frameworks -L${MACOS_SDK_PATH}/usr/lib" \
+	CC="${ZIG_CC} -target x86_64-macos ${MACOS_AMD64_LIB_PATH} -isysroot ${MACOS_SDK_PATH} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks" \
+	CXX="${ZIG_CXX} -target x86_64-macos ${MACOS_AMD64_LIB_PATH} -isysroot ${MACOS_SDK_PATH} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks" \
+	${BUILD_CMD} -o=${BUILD_DIR}/beatportdl-darwin-amd64 ${BUILD_SRC}
 
-.PHONY: all clean $(PLATFORMS)
+windows-amd64:
+	@echo "Building for Windows AMD64"
+	go clean -cache
+	CGO_ENABLED=1 \
+	GOOS=windows \
+	GOARCH=amd64 \
+	CC="${ZIG_CC} -target x86_64-windows-gnu ${WINDOWS_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall" \
+	CXX="${ZIG_CXX} -target x86_64-windows-gnu ${WINDOWS_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall" \
+	${BUILD_CMD} -o=${BUILD_DIR}/beatportdl-windows-amd64.exe ${BUILD_SRC}

@@ -13,6 +13,7 @@ type AppConfig struct {
 	DownloadsDirectory       string `yaml:"downloads_directory,omitempty"`
 	Quality                  string `yaml:"quality,omitempty"`
 	CreateReleaseDirectory   bool   `yaml:"create_release_directory,omitempty"`
+	FixTags                  bool   `yaml:"fix_tags,omitempty"`
 	CoverSize                string `yaml:"cover_size,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unspok3n/beatportdl/config"
 	"unspok3n/beatportdl/internal/beatport"
+	"unspok3n/beatportdl/internal/taglib"
 )
 
 func Setup() (cfg *config.AppConfig, cachePath string) {
@@ -63,7 +64,7 @@ func Setup() (cfg *config.AppConfig, cachePath string) {
 }
 
 func (app *application) mainPrompt() {
-	fmt.Print("Enter track or release link or search query: ")
+	fmt.Print("Enter url or search query: ")
 	input := GetLine()
 	if strings.HasPrefix(input, "https://www.beatport.com") {
 		app.urls = append(app.urls, input)
@@ -302,6 +303,23 @@ func (app *application) handleTrack(track *beatport.Track) {
 	}
 }
 
+var (
+	beatportTags = []string{
+		"COMMENT",
+		"ENCODED_BY",
+		"ENCODER",
+		"FILEOWNER",
+		"FILETYPE",
+		"LABEL_URL",
+		"INITIAL_KEY",
+		"ORGANIZATION",
+		"RECORDING_DATE",
+		"RELEASE_TIME",
+		"TRACK_URL",
+		"YEAR",
+	}
+)
+
 func (app *application) saveTrack(track beatport.Track, directory string, quality string) error {
 	stream, err := app.bp.DownloadTrack(track.ID, quality)
 	if err != nil {
@@ -328,6 +346,25 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 	if err = app.downloadFile(stream.Location, filePath); err != nil {
 		return err
 	}
+
+	if app.config.FixTags {
+		file, err := taglib.Read(filePath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		date := file.GetProperty("RECORDING_DATE")
+		key := file.GetProperty("INITIAL_KEY")
+		for _, tag := range beatportTags {
+			file.SetProperty(tag, "")
+		}
+		file.SetProperty("DATE", date)
+		file.SetProperty("KEY", key)
+		if err = file.Save(); err != nil {
+			return err
+		}
+	}
+
 	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
 
 	return nil
