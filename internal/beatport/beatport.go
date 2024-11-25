@@ -65,7 +65,7 @@ var (
 	ErrInvalidSessionCookie     = errors.New("invalid session cookie")
 )
 
-func New(username string, password string, cacheFilePath string, proxyUrl string) (*Beatport, error) {
+func New(username string, password string, cacheFilePath string, proxyUrl string) *Beatport {
 	transport := &http.Transport{}
 	if proxyUrl != "" {
 		proxyURL, _ := url.Parse(proxyUrl)
@@ -91,8 +91,7 @@ func New(username string, password string, cacheFilePath string, proxyUrl string
 		},
 		headers: headers,
 	}
-
-	return &bp, nil
+	return &bp
 }
 
 func (b *Beatport) LoadCachedTokenPair() error {
@@ -147,7 +146,7 @@ func (b *Beatport) refreshToken() (*tokenPair, error) {
 	return response, nil
 }
 
-func (b *Beatport) authorize(code string) error {
+func (b *Beatport) issueToken(code string) error {
 	payload := map[string]string{
 		"client_id": clientId,
 	}
@@ -180,7 +179,7 @@ func (b *Beatport) authorize(code string) error {
 	return nil
 }
 
-func (b *Beatport) parseAuthorizationCode(sessionId string) (string, error) {
+func (b *Beatport) authorize(sessionId string) (string, error) {
 	b.headers["cookie"] = fmt.Sprintf("sessionid=%s", sessionId)
 	res, err := b.fetch("GET", authEndpoint, nil, "")
 	if err != nil {
@@ -223,16 +222,14 @@ func (b *Beatport) NewTokenPair() error {
 	fmt.Println("Logging in")
 	sessionId, err := b.login()
 	if err != nil {
-		return err
+		return fmt.Errorf("login: %v", err)
 	}
-	fmt.Println("Authorizing")
-	authorizationCode, err := b.parseAuthorizationCode(sessionId)
+	authorizationCode, err := b.authorize(sessionId)
 	if err != nil {
-		return err
+		return fmt.Errorf("authorize: %v", err)
 	}
-	fmt.Println("Issuing token")
-	if err := b.authorize(authorizationCode); err != nil {
-		return err
+	if err := b.issueToken(authorizationCode); err != nil {
+		return fmt.Errorf("issue token: %v", err)
 	}
 	return nil
 }
