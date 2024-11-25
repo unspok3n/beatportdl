@@ -186,6 +186,7 @@ func (b *Beatport) parseAuthorizationCode(sessionId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	delete(b.headers, "cookie")
 	redirectUrl := res.Header.Get("Location")
 	parsedUrl, err := url.Parse(redirectUrl)
 	if err != nil {
