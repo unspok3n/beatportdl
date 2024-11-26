@@ -9,19 +9,20 @@ import (
 )
 
 type Track struct {
-	ID       int64    `json:"id"`
-	Name     string   `json:"name"`
-	MixName  string   `json:"mix_name"`
-	Number   int      `json:"number"`
-	Key      TrackKey `json:"key"`
-	BPM      int      `json:"bpm"`
-	Genre    Genre    `json:"genre"`
-	ISRC     string   `json:"isrc"`
-	Length   string   `json:"length"`
-	Artists  []Artist `json:"artists"`
-	Remixers []Artist `json:"remixers"`
-	Release  Release  `json:"release"`
-	URL      string   `json:"url"`
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	MixName     string   `json:"mix_name"`
+	Number      int      `json:"number"`
+	Key         TrackKey `json:"key"`
+	BPM         int      `json:"bpm"`
+	Genre       Genre    `json:"genre"`
+	ISRC        string   `json:"isrc"`
+	Length      string   `json:"length"`
+	Artists     []Artist `json:"artists"`
+	Remixers    []Artist `json:"remixers"`
+	PublishDate string   `json:"publish_date"`
+	Release     Release  `json:"release"`
+	URL         string   `json:"url"`
 }
 
 type TrackKey struct {

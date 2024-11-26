@@ -12,14 +12,19 @@ type AppConfig struct {
 	Password                 string `yaml:"password,omitempty"`
 	DownloadsDirectory       string `yaml:"downloads_directory,omitempty"`
 	Quality                  string `yaml:"quality,omitempty"`
-	CreateReleaseDirectory   bool   `yaml:"create_release_directory,omitempty"`
-	FixTags                  bool   `yaml:"fix_tags,omitempty"`
+	SortByContext            bool   `yaml:"sort_by_context,omitempty"`
 	CoverSize                string `yaml:"cover_size,omitempty"`
+	KeepCover                bool   `yaml:"keep_cover,omitempty"`
+	FixTags                  bool   `yaml:"fix_tags,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
 	WhitespaceCharacter      string `yaml:"whitespace_character,omitempty"`
 	Proxy                    string `yaml:"proxy,omitempty"`
 }
+
+const (
+	DefaultCoverSize = "1400x1400"
+)
 
 func Parse(filePath string) (*AppConfig, error) {
 	file, err := os.Open(filePath)
@@ -28,8 +33,10 @@ func Parse(filePath string) (*AppConfig, error) {
 	}
 	config := AppConfig{
 		Quality:                  "lossless",
+		CoverSize:                DefaultCoverSize,
 		TrackFileTemplate:        "{number}. {artists} - {name} ({mix_name})",
 		ReleaseDirectoryTemplate: "[{catalog_number}] {artists} - {name}",
+		FixTags:                  true,
 	}
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {

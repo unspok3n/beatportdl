@@ -2,10 +2,14 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"unspok3n/beatportdl/config"
 	"unspok3n/beatportdl/internal/beatport"
 	"unspok3n/beatportdl/internal/taglib"
@@ -144,81 +148,184 @@ func (app *application) parseTextFile(path string) {
 	}
 }
 
+var (
+	ErrUnsupportedLinkType = errors.New("unsupported link type")
+)
+
 func (app *application) handleUrl(url string) {
 	link, err := app.bp.ParseUrl(url)
 	if err != nil {
 		LogError("parse url", err)
 		return
 	}
-	if link.Type == beatport.TrackLink {
+	switch link.Type {
+	default:
+		LogError("handle url", ErrUnsupportedLinkType)
+	case beatport.TrackLink:
 		track, err := app.bp.GetTrack(link.ID)
 		if err != nil {
 			LogError("fetch track", err)
 			return
 		}
-		app.handleTrack(track)
-	} else if link.Type == beatport.ReleaseLink {
-		release, err := app.bp.GetRelease(link.ID)
-		if err != nil {
-			LogError("fetch release", err)
-			return
-		}
 
 		downloadsDirectory := app.config.DownloadsDirectory
-		if app.config.CreateReleaseDirectory {
+		if app.config.SortByContext {
+			release, err := app.bp.GetRelease(track.Release.ID)
+			if err != nil {
+				LogError("fetch release", err)
+				return
+			}
 			releaseDirectory := release.DirectoryName(
 				app.config.ReleaseDirectoryTemplate,
 				app.config.WhitespaceCharacter,
 			)
 			downloadsDirectory = fmt.Sprintf("%s/%s",
-				app.config.DownloadsDirectory,
+				downloadsDirectory,
 				releaseDirectory,
 			)
 		}
-
 		if err := CreateDirectory(downloadsDirectory); err != nil {
 			LogError("create downloads directory", err)
 			return
 		}
 
-		if app.config.CoverSize != "" {
-			coverUrl := strings.Replace(
-				release.Image.DynamicURI,
-				"{w}x{h}",
-				app.config.CoverSize,
-				-1,
+		location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
+		if err != nil {
+			LogError("save track", err)
+			return
+		}
+		var coverPath string
+		if (app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags) || (app.config.SortByContext && app.config.KeepCover) {
+			coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
+			coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
+			if err = app.downloadFile(coverUrl, coverPath); err != nil {
+				LogError("download file", err)
+				return
+			}
+		}
+
+		if err := app.tagTrack(location, *track, coverPath); err != nil {
+			LogError("tag track", err)
+			return
+		}
+
+		if app.config.KeepCover && app.config.SortByContext {
+			newPath := filepath.Dir(coverPath) + "/cover.jpg"
+			if err := os.Rename(coverPath, newPath); err != nil {
+				LogError("rename cover", err)
+				return
+			}
+		} else {
+			os.Remove(coverPath)
+		}
+	case beatport.ReleaseLink:
+		release, err := app.bp.GetRelease(link.ID)
+		if err != nil {
+			LogError("fetch release", err)
+			return
+		}
+		downloadsDirectory := app.config.DownloadsDirectory
+		if app.config.SortByContext {
+			downloadsDirectory = fmt.Sprintf("%s/%s",
+				app.config.DownloadsDirectory,
+				release.DirectoryName(
+					app.config.ReleaseDirectoryTemplate,
+					app.config.WhitespaceCharacter,
+				),
 			)
-			coverPath := downloadsDirectory + "/cover.jpg"
+		}
+		if err := CreateDirectory(downloadsDirectory); err != nil {
+			LogError("create downloads directory", err)
+			return
+		}
+
+		var coverPath string
+		if (app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags) || (app.config.SortByContext && app.config.KeepCover) {
+			coverUrl := release.Image.FormattedUrl(app.config.CoverSize)
+			coverPath = downloadsDirectory + "/" + uuid.New().String()
 			if err = app.downloadFile(coverUrl, coverPath); err != nil {
 				LogError("download cover", err)
 			}
 		}
 
+		wg := sync.WaitGroup{}
 		for _, trackUrl := range release.TrackUrls {
-			app.background(func() {
+			app.backgroundCustom(&wg, func() {
 				trackLink, _ := app.bp.ParseUrl(trackUrl)
 				track, err := app.bp.GetTrack(trackLink.ID)
 				if err != nil {
 					LogError("fetch track", err)
 					return
 				}
-				if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
+				location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
+				if err != nil {
 					LogError("save track", err)
+					return
+				}
+				if err := app.tagTrack(location, *track, coverPath); err != nil {
+					LogError("tag track", err)
 					return
 				}
 			})
 		}
-	} else if link.Type == beatport.PlaylistLink {
+		wg.Wait()
+		if app.config.KeepCover && app.config.SortByContext {
+			newPath := filepath.Dir(coverPath) + "/cover.jpg"
+			if err := os.Rename(coverPath, newPath); err != nil {
+				LogError("rename cover", err)
+				return
+			}
+		} else {
+			os.Remove(coverPath)
+		}
+	case beatport.PlaylistLink:
+		playlist, err := app.bp.GetPlaylist(link.ID)
+		if err != nil {
+			LogError("fetch playlist", err)
+			return
+		}
+		downloadsDirectory := app.config.DownloadsDirectory
+		if app.config.SortByContext {
+			downloadsDirectory = fmt.Sprintf("%s/%s",
+				app.config.DownloadsDirectory,
+				playlist.Name,
+			)
+		}
+		if err := CreateDirectory(downloadsDirectory); err != nil {
+			LogError("create downloads directory", err)
+			return
+		}
+
 		page := 1
 		for {
 			items, err := app.bp.GetPlaylistItems(link.ID, page)
 			if err != nil {
-				LogError("fetch playlist", err)
+				LogError("fetch playlist items", err)
 				return
 			}
 			for _, item := range items.Results {
 				app.background(func() {
-					app.handleTrack(&item.Track)
+					item.Track.Number = item.Position
+					location, err := app.saveTrack(item.Track, downloadsDirectory, app.config.Quality)
+					if err != nil {
+						LogError("save track", err)
+						return
+					}
+					var coverPath string
+					if app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags {
+						coverUrl := item.Track.Release.Image.FormattedUrl(app.config.CoverSize)
+						coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
+						if err = app.downloadFile(coverUrl, coverPath); err != nil {
+							LogError("download file", err)
+							return
+						}
+						defer os.Remove(coverPath)
+					}
+
+					if err := app.tagTrack(location, item.Track, coverPath); err != nil {
+						LogError("tag track", err)
+						return
+					}
 				})
 			}
 
@@ -228,7 +335,32 @@ func (app *application) handleUrl(url string) {
 
 			page++
 		}
-	} else if link.Type == beatport.ChartLink {
+	case beatport.ChartLink:
+		chart, err := app.bp.GetChart(link.ID)
+		if err != nil {
+			LogError("fetch chart", err)
+			return
+		}
+		downloadsDirectory := app.config.DownloadsDirectory
+		if app.config.SortByContext {
+			downloadsDirectory = fmt.Sprintf("%s/%s",
+				app.config.DownloadsDirectory,
+				chart.Name,
+			)
+		}
+		if err := CreateDirectory(downloadsDirectory); err != nil {
+			LogError("create downloads directory", err)
+			return
+		}
+		if app.config.KeepCover && app.config.SortByContext {
+			app.background(func() {
+				coverPath := downloadsDirectory + "/cover.jpg"
+				if err = app.downloadFile(chart.Image.FormattedUrl(app.config.CoverSize), coverPath); err != nil {
+					LogError("download cover", err)
+				}
+			})
+		}
+
 		page := 1
 		for {
 			tracks, err := app.bp.GetChartTracks(link.ID, page)
@@ -236,9 +368,29 @@ func (app *application) handleUrl(url string) {
 				LogError("fetch chart", err)
 				return
 			}
-			for _, track := range tracks.Results {
+			for index, track := range tracks.Results {
 				app.background(func() {
-					app.handleTrack(&track)
+					track.Number = index + 1
+					location, err := app.saveTrack(track, downloadsDirectory, app.config.Quality)
+					if err != nil {
+						LogError("save track", err)
+						return
+					}
+					var coverPath string
+					if app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags {
+						coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
+						coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
+						if err = app.downloadFile(coverUrl, coverPath); err != nil {
+							LogError("download file", err)
+							return
+						}
+						defer os.Remove(coverPath)
+					}
+
+					if err := app.tagTrack(location, track, coverPath); err != nil {
+						LogError("tag track", err)
+						return
+					}
 				})
 			}
 
@@ -251,56 +403,35 @@ func (app *application) handleUrl(url string) {
 	}
 }
 
-func (app *application) handleTrack(track *beatport.Track) {
-	downloadsDirectory := app.config.DownloadsDirectory
-
-	var coverPath string
-	var coverUrl string
-
-	if app.config.CreateReleaseDirectory && track.Number != 0 {
-		release, err := app.bp.GetRelease(track.Release.ID)
-		if err != nil {
-			LogError("fetch release", err)
-			return
-		}
-		releaseDirectory := release.DirectoryName(
-			app.config.ReleaseDirectoryTemplate,
-			app.config.WhitespaceCharacter,
-		)
-		downloadsDirectory = fmt.Sprintf("%s/%s",
-			downloadsDirectory,
-			releaseDirectory,
-		)
-		if app.config.CoverSize != "" {
-			coverUrl = strings.Replace(
-				release.Image.DynamicURI,
-				"{w}x{h}",
-				app.config.CoverSize,
-				-1,
-			)
-			coverPath = downloadsDirectory + "/cover.jpg"
-		}
+func (app *application) saveTrack(track beatport.Track, directory string, quality string) (string, error) {
+	stream, err := app.bp.DownloadTrack(track.ID, quality)
+	if err != nil {
+		return "", err
 	}
-
-	if track.Number == 0 {
-		track.Number = 1
+	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
+	var fileExtension string
+	var displayQuality string
+	switch stream.StreamQuality {
+	case ".128k.aac.mp4":
+		fileExtension = ".aac"
+		displayQuality = "AAC 128kbps"
+	case ".256k.aac.mp4":
+		fileExtension = ".aac"
+		displayQuality = "AAC 256kbps"
+	case ".flac":
+		fileExtension = ".flac"
+		displayQuality = "FLAC"
+	default:
+		return "", fmt.Errorf("invalid stream quality: %s", stream.StreamQuality)
 	}
-
-	if err := CreateDirectory(downloadsDirectory); err != nil {
-		LogError("create downloads directory", err)
-		return
+	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
+	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
+	if err = app.downloadFile(stream.Location, filePath); err != nil {
+		return "", err
 	}
+	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
 
-	if coverUrl != "" && coverPath != "" {
-		if err := app.downloadFile(coverUrl, coverPath); err != nil {
-			LogError("download cover", err)
-		}
-	}
-
-	if err := app.saveTrack(*track, downloadsDirectory, app.config.Quality); err != nil {
-		LogError("save track", err)
-		return
-	}
+	return filePath, nil
 }
 
 var (
@@ -320,52 +451,45 @@ var (
 	}
 )
 
-func (app *application) saveTrack(track beatport.Track, directory string, quality string) error {
-	stream, err := app.bp.DownloadTrack(track.ID, quality)
+func (app *application) tagTrack(location string, track beatport.Track, coverPath string) error {
+	fileExt := filepath.Ext(location)
+	if fileExt == ".aac" || !app.config.FixTags {
+		return nil
+	}
+	file, err := taglib.Read(location)
 	if err != nil {
 		return err
 	}
-	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
-	var fileExtension string
-	var displayQuality string
-	switch stream.StreamQuality {
-	case ".128k.aac.mp4":
-		fileExtension = ".aac"
-		displayQuality = "AAC 128kbps"
-	case ".256k.aac.mp4":
-		fileExtension = ".aac"
-		displayQuality = "AAC 256kbps"
-	case ".flac":
-		fileExtension = ".flac"
-		displayQuality = "FLAC"
-	default:
-		return fmt.Errorf("invalid stream quality: %s", stream.StreamQuality)
-	}
-	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
-	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
-	if err = app.downloadFile(stream.Location, filePath); err != nil {
-		return err
-	}
+	defer file.Close()
 
-	if app.config.FixTags {
-		file, err := taglib.Read(filePath)
+	date := file.GetProperty("RECORDING_DATE")
+	key := file.GetProperty("INITIAL_KEY")
+	for _, tag := range beatportTags {
+		file.SetProperty(tag, "")
+	}
+	file.SetProperty("DATE", date)
+	file.SetProperty("KEY", key)
+
+	if coverPath != "" && app.config.CoverSize != config.DefaultCoverSize {
+		data, err := os.ReadFile(coverPath)
 		if err != nil {
 			return err
 		}
-		defer file.Close()
-		date := file.GetProperty("RECORDING_DATE")
-		key := file.GetProperty("INITIAL_KEY")
-		for _, tag := range beatportTags {
-			file.SetProperty(tag, "")
+		picture := taglib.Picture{
+			MimeType:    "image/jpeg",
+			PictureType: "Front",
+			Description: "Cover",
+			Data:        data,
+			Size:        uint(len(data)),
 		}
-		file.SetProperty("DATE", date)
-		file.SetProperty("KEY", key)
-		if err = file.Save(); err != nil {
+		if err := file.SetPicture(&picture); err != nil {
 			return err
 		}
 	}
 
-	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
+	if err = file.Save(); err != nil {
+		return err
+	}
 
 	return nil
 }

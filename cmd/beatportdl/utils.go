@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 func (app *application) background(fn func()) {
@@ -15,6 +16,20 @@ func (app *application) background(fn func()) {
 
 	go func() {
 		defer app.wg.Done()
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf(fmt.Errorf("%s", err).Error())
+			}
+		}()
+		fn()
+	}()
+}
+
+func (app *application) backgroundCustom(wg *sync.WaitGroup, fn func()) {
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf(fmt.Errorf("%s", err).Error())

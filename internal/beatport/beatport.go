@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -347,4 +348,13 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 	}
 
 	return resp, nil
+}
+
+func (i *Image) FormattedUrl(size string) string {
+	return strings.Replace(
+		i.DynamicURI,
+		"{w}x{h}",
+		size,
+		-1,
+	)
 }

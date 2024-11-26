@@ -1,7 +1,6 @@
-# go.uber.org/multierr v1.10.0
-## explicit; go 1.19
-# go.uber.org/zap v1.27.0
-## explicit; go 1.19
+# github.com/google/uuid v1.6.0
+## explicit
+github.com/google/uuid
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
