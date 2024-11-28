@@ -72,7 +72,7 @@ func GetStreamSegments(stream string) (*[]string, *StreamKey, error) {
 			streamKey.Value = keyBytes
 			streamKey.IV = ivBytes
 		}
-		segments = append(segments, baseUrl+segment.URI)
+		segments = append(segments, base+segment.URI)
 	}
 
 	return &segments, &streamKey, nil
