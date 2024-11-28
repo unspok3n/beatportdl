@@ -36,6 +36,16 @@ darwin-amd64:
 	CXX="${ZIG_CXX} -target x86_64-macos ${MACOS_AMD64_LIB_PATH} -isysroot ${MACOS_SDK_PATH} -iwithsysroot /usr/include -iframeworkwithsysroot /System/Library/Frameworks" \
 	${BUILD_CMD} -o=${BUILD_DIR}/beatportdl-darwin-amd64 ${BUILD_SRC}
 
+linux-amd64:
+	@echo "Building for Linux AMD64"
+	go clean -cache
+	CGO_ENABLED=1 \
+	GOOS=linux \
+	GOARCH=amd64 \
+	CC="${ZIG_CC} -target x86_64-linux-gnu ${LINUX_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall" \
+	CXX="${ZIG_CXX} -target x86_64-linux-gnu ${LINUX_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall" \
+	${BUILD_CMD} -o=${BUILD_DIR}/beatportdl-linux-amd64 ${BUILD_SRC}
+
 windows-amd64:
 	@echo "Building for Windows AMD64"
 	go clean -cache
