@@ -195,7 +195,7 @@ func (app *application) handleUrl(url string) {
 			return
 		}
 		var coverPath string
-		if (app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags) || (app.config.SortByContext && app.config.KeepCover) {
+		if app.requireCover(true) {
 			coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
 			coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
 			if err = app.downloadFile(coverUrl, coverPath); err != nil {
@@ -240,7 +240,7 @@ func (app *application) handleUrl(url string) {
 		}
 
 		var coverPath string
-		if (app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags) || (app.config.SortByContext && app.config.KeepCover) {
+		if app.requireCover(true) {
 			coverUrl := release.Image.FormattedUrl(app.config.CoverSize)
 			coverPath = downloadsDirectory + "/" + uuid.New().String()
 			if err = app.downloadFile(coverUrl, coverPath); err != nil {
@@ -312,7 +312,7 @@ func (app *application) handleUrl(url string) {
 						return
 					}
 					var coverPath string
-					if app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags {
+					if app.requireCover(false) {
 						coverUrl := item.Track.Release.Image.FormattedUrl(app.config.CoverSize)
 						coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
 						if err = app.downloadFile(coverUrl, coverPath); err != nil {
@@ -377,7 +377,7 @@ func (app *application) handleUrl(url string) {
 						return
 					}
 					var coverPath string
-					if app.config.CoverSize != config.DefaultCoverSize && app.config.FixTags {
+					if app.requireCover(false) {
 						coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
 						coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
 						if err = app.downloadFile(coverUrl, coverPath); err != nil {
@@ -401,6 +401,16 @@ func (app *application) handleUrl(url string) {
 			page++
 		}
 	}
+}
+
+func (app *application) requireCover(respectKeepCover bool) bool {
+	fixTags := (app.config.CoverSize != config.DefaultCoverSize ||
+		app.config.Quality != "lossless") && app.config.FixTags
+	keepCover := app.config.SortByContext && app.config.KeepCover
+	if respectKeepCover {
+		return fixTags || keepCover
+	}
+	return fixTags
 }
 
 func (app *application) saveTrack(track beatport.Track, directory string, quality string) (string, error) {
@@ -443,9 +453,6 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 
 	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
 	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
-	if err = app.downloadFile(stream.Location, filePath); err != nil {
-		return "", err
-	}
 
 	if stream != nil {
 		if err := app.downloadFile(stream.Location, filePath); err != nil {
@@ -490,7 +497,7 @@ var (
 
 func (app *application) tagTrack(location string, track beatport.Track, coverPath string) error {
 	fileExt := filepath.Ext(location)
-	if fileExt == ".aac" || !app.config.FixTags {
+	if !app.config.FixTags {
 		return nil
 	}
 	file, err := taglib.Read(location)
@@ -499,15 +506,29 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	}
 	defer file.Close()
 
-	date := file.GetProperty("RECORDING_DATE")
-	key := file.GetProperty("INITIAL_KEY")
-	for _, tag := range beatportTags {
-		file.SetProperty(tag, "")
+	if fileExt == ".flac" {
+		date := file.GetProperty("RECORDING_DATE")
+		key := file.GetProperty("INITIAL_KEY")
+		for _, tag := range beatportTags {
+			file.SetProperty(tag, "")
+		}
+		file.SetProperty("DATE", date)
+		file.SetProperty("KEY", key)
 	}
-	file.SetProperty("DATE", date)
-	file.SetProperty("KEY", key)
 
-	if coverPath != "" && app.config.CoverSize != config.DefaultCoverSize {
+	if fileExt == ".m4a" {
+		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name, track.MixName))
+		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
+		file.SetProperty("ALBUM", track.Release.Name)
+		file.SetProperty("ARTIST", track.ArtistsDisplay(beatport.ArtistTypeMain))
+		file.SetProperty("DATE", track.PublishDate)
+		file.SetProperty("BPM", strconv.Itoa(track.BPM))
+		file.SetProperty("KEY", track.Key.Name)
+		file.SetProperty("ISRC", track.ISRC)
+		file.SetProperty("LABEL", track.Release.Label.Name)
+	}
+
+	if coverPath != "" && (app.config.CoverSize != config.DefaultCoverSize || fileExt == ".m4a") {
 		data, err := os.ReadFile(coverPath)
 		if err != nil {
 			return err
