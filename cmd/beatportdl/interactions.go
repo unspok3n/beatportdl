@@ -404,31 +404,68 @@ func (app *application) handleUrl(url string) {
 }
 
 func (app *application) saveTrack(track beatport.Track, directory string, quality string) (string, error) {
-	stream, err := app.bp.DownloadTrack(track.ID, quality)
-	if err != nil {
-		return "", err
-	}
-	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
 	var fileExtension string
 	var displayQuality string
-	switch stream.StreamQuality {
-	case ".128k.aac.mp4":
-		fileExtension = ".aac"
-		displayQuality = "AAC 128kbps"
-	case ".256k.aac.mp4":
-		fileExtension = ".aac"
-		displayQuality = "AAC 256kbps"
-	case ".flac":
-		fileExtension = ".flac"
-		displayQuality = "FLAC"
+
+	var needledrop *beatport.TrackNeedledrop
+	var stream *beatport.TrackStream
+
+	switch app.config.Quality {
+	case "medium-hls":
+		trackNeedledrop, err := app.bp.StreamTrack(track.ID)
+		if err != nil {
+			return "", err
+		}
+		fileExtension = ".m4a"
+		displayQuality = "AAC 128kbps - HLS"
+		needledrop = trackNeedledrop
 	default:
-		return "", fmt.Errorf("invalid stream quality: %s", stream.StreamQuality)
+		trackStream, err := app.bp.DownloadTrack(track.ID, quality)
+		if err != nil {
+			return "", err
+		}
+		switch trackStream.StreamQuality {
+		case ".128k.aac.mp4":
+			fileExtension = ".m4a"
+			displayQuality = "AAC 128kbps"
+		case ".256k.aac.mp4":
+			fileExtension = ".m4a"
+			displayQuality = "AAC 256kbps"
+		case ".flac":
+			fileExtension = ".flac"
+			displayQuality = "FLAC"
+		default:
+			return "", fmt.Errorf("invalid stream quality: %s", trackStream.StreamQuality)
+		}
+		stream = trackStream
 	}
 	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
+
+	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
 	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
 	if err = app.downloadFile(stream.Location, filePath); err != nil {
 		return "", err
 	}
+
+	if stream != nil {
+		if err := app.downloadFile(stream.Location, filePath); err != nil {
+			return "", err
+		}
+	} else if needledrop != nil {
+		segments, key, err := beatport.GetStreamSegments(needledrop.Stream)
+		if err != nil {
+			return "", fmt.Errorf("get stream segments: %v", err)
+		}
+		segmentsFile, err := beatport.DownloadSegments(directory, *segments, *key)
+		defer os.Remove(segmentsFile)
+		if err != nil {
+			return "", fmt.Errorf("download segments: %v", err)
+		}
+		if err := beatport.RemuxToM4A(segmentsFile, filePath); err != nil {
+			return "", fmt.Errorf("remux to m4a: %v", err)
+		}
+	}
+
 	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
 
 	return filePath, nil

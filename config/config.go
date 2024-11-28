@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"unspok3n/beatportdl/internal/beatport"
 
 	"gopkg.in/yaml.v2"
 )
@@ -45,6 +46,10 @@ func Parse(filePath string) (*AppConfig, error) {
 
 	if config.Username == "" || config.Password == "" {
 		return nil, fmt.Errorf("username or password is not provided")
+	}
+
+	if config.Quality == "medium-hls" && !beatport.FFMPEGInstalled() {
+		return nil, beatport.ErrFfmpegNotFound
 	}
 
 	if config.DownloadsDirectory == "" {

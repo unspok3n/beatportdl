@@ -18,6 +18,7 @@ type Track struct {
 	Genre       Genre    `json:"genre"`
 	ISRC        string   `json:"isrc"`
 	Length      string   `json:"length"`
+	LengthMs    int      `json:"length_ms"`
 	Artists     []Artist `json:"artists"`
 	Remixers    []Artist `json:"remixers"`
 	PublishDate string   `json:"publish_date"`
@@ -36,6 +37,12 @@ type Genre struct {
 type TrackStream struct {
 	Location      string `json:"location"`
 	StreamQuality string `json:"stream_quality"`
+}
+
+type TrackNeedledrop struct {
+	Stream        string `json:"stream_url"`
+	SampleStartMs int    `json:"sample_start_ms"`
+	SampleEndMs   int    `json:"sample_end_ms"`
 }
 
 func (t *Track) ArtistsDisplay(aType ArtistType) string {
@@ -122,6 +129,27 @@ func (b *Beatport) DownloadTrack(id int64, quality string) (*TrackStream, error)
 	}
 	defer res.Body.Close()
 	response := &TrackStream{}
+	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func (b *Beatport) StreamTrack(id int64) (*TrackNeedledrop, error) {
+	res, err := b.fetch(
+		"GET",
+		fmt.Sprintf(
+			"/catalog/tracks/%d/stream/",
+			id,
+		),
+		nil,
+		"",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	response := &TrackNeedledrop{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
