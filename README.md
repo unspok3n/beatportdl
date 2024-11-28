@@ -64,3 +64,27 @@ Available template keywords:
 * Release: `id`,`name`,`artists`,`remixers`,`date`,`catalog_number`
 
 Proxy url example: `http://username:password@127.0.0.1:8080`
+
+Building
+---
+Required dependencies:
+* [TagLib](https://github.com/taglib/taglib) >= 2.0
+* [zlib](https://github.com/madler/zlib) >= 1.2.3
+* [Zig C/C++ Toolchain](https://github.com/ziglang/zig) >= 0.13.0
+
+BeatportDL uses [TagLib](https://taglib.org/) C bindings to handle audio metadata and therefore requires `CGO_ENABLED=1`
+
+Makefile is adapted for CGO cross-compilation and uses [Zig toolchain](https://github.com/ziglang/zig)
+
+To compile BeatportDL with Zig using Makefile, you have to specify the path to C/C++ libraries and headers for the desired OS and architecture using environment variables:
+```shell
+MACOS_ARM64_LIB_PATH=
+MACOS_AMD64_LIB_PATH=
+LINUX_AMD64_LIB_PATH=
+WINDOWS_AMD64_LIB_PATH=
+```
+Example
+```shell
+MACOS_ARM64_LIB_PATH="-L/usr/lib/aarch64-macos -I/usr/include/aarch64-macos" \
+make darwin-arm64
+```
