@@ -8,14 +8,23 @@ Beatport downloader (FLAC, AAC). Supports track and release links.
 
 Setup
 ---
-Download or build beatportDL
+[Download](https://github.com/unspok3n/beatportdl/releases/) or [build](#building) beatportDL
 
 *Compiled binaries for Windows, macOS (amd64, arm64) and Linux are available on the [Releases](https://github.com/unspok3n/beatportdl/releases) page*
 
-Run beatportdl, specify username, password, and downloads directory
+Run beatportdl, specify username, password, downloads directory, and quality
+
+Subscription types and maximum available quality:\
+**Essential** - `medium-hls`*(same as medium on Advanced but uses a slightly slower download method)*\
+**Advanced** - `medium`\
+**Professional** - `lossless`
+
+*If you use `medium-hls`, you should have [ffmpeg](https://www.ffmpeg.org/download.html) installed*
+
 ```shell
 ./beatportdl
 ```
+
 This will create a new `beatportdl-config.yml` file
 
 If credentials are correct, you should also see `beatportdl-credentials.json` file appear in beatportdl directory
@@ -25,7 +34,7 @@ If credentials are correct, you should also see `beatportdl-credentials.json` fi
 Usage
 ---
 
-Run beatportdl and enter the track or release url
+Run beatportdl and enter url or search query
 ```shell
 ./beatportdl
 ```
@@ -39,22 +48,27 @@ or provide a text file with urls (separated by newline)
 ./beatportdl file.txt file2.txt
 ```
 
+URL types that are currently supported: **Tracks, Releases, Playlists, Charts**
+
 Config options
 ---
-| Option                       | Default                                   | Description                                                      |
-|------------------------------|-------------------------------------------|------------------------------------------------------------------|
-| `username`                   |                                           | Beatport username                                                |
-| `password`                   |                                           | Beatport password                                                |
-| `quality`                    | lossless                                  | Download quality *(medium, high, lossless)*                      |
-| `downloads_directory`        |                                           | Downloads directory                                              |
-| `create_release_directory`   | false                                     | Create directory per release                                     |
-| `cover_size`                 |                                           | Cover art size *(max: 1400x1400)*                                |
-| `track_file_template`        | {number}. {artists} - {name} ({mix_name}) | Track filename template                                          |
-| `release_directory_template` | [{catalog_number}] {artists} - {name}     | Release directory name template                                  |
-| `whitespace_character`       |                                           | Whitespace character for track filenames and release directories |
-| `proxy`                      |                                           | Proxy url                                                        |
+| Option                       | Default                                   | Description                                                                                                       |
+|------------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| `username`                   |                                           | Beatport username                                                                                                 |
+| `password`                   |                                           | Beatport password                                                                                                 |
+| `quality`                    | lossless                                  | Download quality *(medium-hls, medium, high, lossless)*                                                           |
+| `downloads_directory`        |                                           | Downloads directory                                                                                               |
+| `sort_by_context`            | false                                     | Create a directory for each release, playlist, or chart                                                           |
+| `cover_size`                 | 1400x1400                                 | Cover art size for `keep_cover` and track metadata (if `fix_tags` is enabled)  *[max: 1400x1400]*                 |
+| `keep_cover`                 | false                                     | Download cover art file (cover.jpg) to the context directory (works only if `sort_by_context` is enabled)         |
+| `fix_tags`                   | true                                      | Add missing metadata to M4A (AAC) files and remove useless tags from FLAC files (e.g., Purchased at Beatport.com) |
+| `track_file_template`        | {number}. {artists} - {name} ({mix_name}) | Track filename template                                                                                           |
+| `release_directory_template` | [{catalog_number}] {artists} - {name}     | Release directory name template                                                                                   |
+| `whitespace_character`       |                                           | Whitespace character for track filenames and release directories                                                  |
+| `proxy`                      |                                           | Proxy url                                                                                                         |
 
 Download quality:\
+`medium-hls` - 128 kbps AAC through the `/stream` endpoint (for Essential subscription, requires [ffmpeg](https://www.ffmpeg.org/download.html))\
 `medium` - 128 kbps AAC\
 `high` - 256 kbps AAC\
 `lossless` - 44.1 khz FLAC
