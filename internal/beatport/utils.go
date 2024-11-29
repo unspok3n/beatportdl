@@ -41,7 +41,7 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 		segmentsLength--
 	}
 
-	if segmentsLength >= 3 && (segments[0] == "track" || segments[0] == "release" || segments[0] == "playlists" || segments[0] == "chart") {
+	if segmentsLength == 3 {
 		id, err := strconv.ParseInt(segments[2], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
@@ -52,6 +52,13 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 			linkType = TrackLink
 		case "release":
 			linkType = ReleaseLink
+		case "library":
+			switch segments[1] {
+			case "playlists":
+				linkType = PlaylistLink
+			default:
+				return nil, fmt.Errorf("invalid link type: %s/%s", segments[0], segments[1])
+			}
 		case "playlists":
 			linkType = PlaylistLink
 		case "chart":
@@ -65,7 +72,7 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 		}, nil
 	}
 
-	if segmentsLength >= 4 && (segments[2] == "tracks" || segments[2] == "releases") {
+	if segmentsLength == 4 {
 		id, err := strconv.ParseInt(segments[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid id: %v", err)
