@@ -36,6 +36,27 @@ func Setup() (cfg *config.AppConfig, cachePath string) {
 			Password:           password,
 			DownloadsDirectory: downloadsDir,
 		}
+
+		fmt.Println("1. Lossless (44.1 khz FLAC)\n2. High (256 kbps AAC)\n3. Medium (128 kbps AAC)\n4. Medium HLS (128 kbps AAC)")
+		for {
+			fmt.Print("Quality: ")
+			qualityNumber := GetLine()
+			switch qualityNumber {
+			case "1":
+				cfg.Quality = "lossless"
+			case "2":
+				cfg.Quality = "high"
+			case "3":
+				cfg.Quality = "medium"
+			case "4":
+				cfg.Quality = "medium-hls"
+			default:
+				fmt.Println("Invalid quality")
+				continue
+			}
+			break
+		}
+
 		if err := cfg.Save(configFilePath); err != nil {
 			FatalError("save config", err)
 		}
