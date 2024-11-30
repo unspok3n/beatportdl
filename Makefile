@@ -12,7 +12,7 @@ ZIG_CXX = zig c++
 
 MACOS_SDK_PATH ?= /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
 
-all: darwin-arm64 darwin-amd64 windows-amd64
+all: darwin-arm64 darwin-amd64 linux-amd64 windows-amd64
 
 darwin-arm64:
 	@echo "Building for macOS ARM64"
