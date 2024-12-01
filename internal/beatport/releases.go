@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Release struct {
@@ -62,12 +63,19 @@ func (r *Release) DirectoryName(template string, whitespace string, aLimit int, 
 	artistsString := r.ArtistsDisplay(ArtistTypeMain, aLimit, aShortForm)
 	remixersString := r.ArtistsDisplay(ArtistTypeRemixers, aLimit, aShortForm)
 
+	var year string
+	dateParsed, err := time.Parse("2006-01-02", r.Date)
+	if err == nil {
+		year = dateParsed.Format("2006")
+	}
+
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
 		"name":           r.Name,
 		"artists":        artistsString,
 		"remixers":       remixersString,
 		"date":           r.Date,
+		"year":           year,
 		"catalog_number": r.CatalogNumber,
 	}
 	directoryName := ParseTemplate(template, templateValues)
