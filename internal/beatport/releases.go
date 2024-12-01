@@ -20,13 +20,16 @@ type Release struct {
 	URL           string   `json:"url"`
 }
 
-func (r *Release) ArtistsDisplay(aType ArtistType) string {
+func (r *Release) ArtistsDisplay(aType ArtistType, limit int, shortForm string) string {
 	var artistNames []string
 	var artists []Artist
 	if aType != ArtistTypeMain {
 		artists = r.Remixers
 	} else {
 		artists = r.Artists
+	}
+	if shortForm != "" && len(artists) > limit {
+		return shortForm
 	}
 	for _, artist := range artists {
 		artistNames = append(artistNames, artist.Name)
@@ -53,11 +56,11 @@ func (b *Beatport) GetRelease(id int64) (*Release, error) {
 	return response, nil
 }
 
-func (r *Release) DirectoryName(template string, whitespace string) string {
+func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
 
-	artistsString := r.ArtistsDisplay(ArtistTypeMain)
-	remixersString := r.ArtistsDisplay(ArtistTypeRemixers)
+	artistsString := r.ArtistsDisplay(ArtistTypeMain, aLimit, aShortForm)
+	remixersString := r.ArtistsDisplay(ArtistTypeRemixers, aLimit, aShortForm)
 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),

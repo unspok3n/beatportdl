@@ -19,6 +19,8 @@ type AppConfig struct {
 	FixTags                  bool   `yaml:"fix_tags,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
+	ArtistsLimit             int    `yaml:"artists_limit,omitempty"`
+	ArtistsShortForm         string `yaml:"artists_short_form,omitempty"`
 	WhitespaceCharacter      string `yaml:"whitespace_character,omitempty"`
 	Proxy                    string `yaml:"proxy,omitempty"`
 }
@@ -37,6 +39,8 @@ func Parse(filePath string) (*AppConfig, error) {
 		CoverSize:                DefaultCoverSize,
 		TrackFileTemplate:        "{number}. {artists} - {name} ({mix_name})",
 		ReleaseDirectoryTemplate: "[{catalog_number}] {artists} - {name}",
+		ArtistsLimit:             3,
+		ArtistsShortForm:         "VA",
 		FixTags:                  true,
 	}
 	decoder := yaml.NewDecoder(file)

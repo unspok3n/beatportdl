@@ -45,13 +45,16 @@ type TrackNeedledrop struct {
 	SampleEndMs   int    `json:"sample_end_ms"`
 }
 
-func (t *Track) ArtistsDisplay(aType ArtistType) string {
+func (t *Track) ArtistsDisplay(aType ArtistType, limit int, shortForm string) string {
 	var artistNames []string
 	var artists []Artist
 	if aType != ArtistTypeMain {
 		artists = t.Remixers
 	} else {
 		artists = t.Artists
+	}
+	if shortForm != "" && len(artists) > limit {
+		return shortForm
 	}
 	for _, artist := range artists {
 		artistNames = append(artistNames, artist.Name)
@@ -60,11 +63,11 @@ func (t *Track) ArtistsDisplay(aType ArtistType) string {
 	return artistsString
 }
 
-func (t *Track) Filename(template string, whitespace string) string {
+func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string) string {
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
 
-	artistsString := t.ArtistsDisplay(ArtistTypeMain)
-	remixersString := t.ArtistsDisplay(ArtistTypeRemixers)
+	artistsString := t.ArtistsDisplay(ArtistTypeMain, aLimit, aShortForm)
+	remixersString := t.ArtistsDisplay(ArtistTypeRemixers, aLimit, aShortForm)
 
 	templateValues := map[string]string{
 		"id":       strconv.Itoa(int(t.ID)),

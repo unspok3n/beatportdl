@@ -116,7 +116,11 @@ func (app *application) search(input string) {
 	for i, track := range results.Tracks {
 		fmt.Printf(
 			"%2d. %s - %s (%s) [%s]\n", i+1,
-			track.ArtistsDisplay(beatport.ArtistTypeMain),
+			track.ArtistsDisplay(
+				beatport.ArtistTypeMain,
+				app.config.ArtistsLimit,
+				app.config.ArtistsShortForm,
+			),
 			track.Name,
 			track.MixName,
 			track.Length,
@@ -127,7 +131,11 @@ func (app *application) search(input string) {
 	for i, release := range results.Releases {
 		fmt.Printf(
 			"%2d. %s - %s [%s]\n", i+indexOffset,
-			release.ArtistsDisplay(beatport.ArtistTypeMain),
+			release.ArtistsDisplay(
+				beatport.ArtistTypeMain,
+				app.config.ArtistsLimit,
+				app.config.ArtistsShortForm,
+			),
 			release.Name,
 			release.Label.Name,
 		)
@@ -199,6 +207,8 @@ func (app *application) handleUrl(url string) {
 			releaseDirectory := release.DirectoryName(
 				app.config.ReleaseDirectoryTemplate,
 				app.config.WhitespaceCharacter,
+				app.config.ArtistsLimit,
+				app.config.ArtistsShortForm,
 			)
 			downloadsDirectory = fmt.Sprintf("%s/%s",
 				downloadsDirectory,
@@ -252,6 +262,8 @@ func (app *application) handleUrl(url string) {
 				release.DirectoryName(
 					app.config.ReleaseDirectoryTemplate,
 					app.config.WhitespaceCharacter,
+					app.config.ArtistsLimit,
+					app.config.ArtistsShortForm,
 				),
 			)
 		}
@@ -472,7 +484,12 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 	}
 	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
 
-	fileName := track.Filename(app.config.TrackFileTemplate, app.config.WhitespaceCharacter)
+	fileName := track.Filename(
+		app.config.TrackFileTemplate,
+		app.config.WhitespaceCharacter,
+		app.config.ArtistsLimit,
+		app.config.ArtistsShortForm,
+	)
 	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
 
 	if stream != nil {
@@ -541,7 +558,11 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name, track.MixName))
 		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
 		file.SetProperty("ALBUM", track.Release.Name)
-		file.SetProperty("ARTIST", track.ArtistsDisplay(beatport.ArtistTypeMain))
+		file.SetProperty("ARTIST", track.ArtistsDisplay(
+			beatport.ArtistTypeMain,
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
+		))
 		file.SetProperty("DATE", track.PublishDate)
 		file.SetProperty("BPM", strconv.Itoa(track.BPM))
 		file.SetProperty("KEY", track.Key.Name)
