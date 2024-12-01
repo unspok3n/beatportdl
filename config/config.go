@@ -17,6 +17,7 @@ type AppConfig struct {
 	CoverSize                string `yaml:"cover_size,omitempty"`
 	KeepCover                bool   `yaml:"keep_cover,omitempty"`
 	FixTags                  bool   `yaml:"fix_tags,omitempty"`
+	WriteErrorLog            bool   `yaml:"write_error_log,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
 	ArtistsLimit             int    `yaml:"artists_limit,omitempty"`

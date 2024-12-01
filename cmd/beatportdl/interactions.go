@@ -15,13 +15,13 @@ import (
 	"unspok3n/beatportdl/internal/taglib"
 )
 
-func Setup() (cfg *config.AppConfig, cachePath string) {
+func Setup() (cfg *config.AppConfig, cachePath string, err error) {
 	configFilePath, err := FindFile(configFilename)
 	if err != nil {
 		fmt.Println("Config file not found, creating a new one")
 		configFilePath, err = ExecutableDirFilePath(configFilename)
 		if err != nil {
-			FatalError("get executable path", err)
+			return nil, configFilePath, fmt.Errorf("get executable path: %w", err)
 		}
 
 		fmt.Print("Username: ")
@@ -58,18 +58,18 @@ func Setup() (cfg *config.AppConfig, cachePath string) {
 		}
 
 		if err := cfg.Save(configFilePath); err != nil {
-			FatalError("save config", err)
+			return nil, configFilePath, fmt.Errorf("save config: %w", err)
 		}
 	}
 
 	parsedConfig, err := config.Parse(configFilePath)
 	if err != nil {
-		FatalError("load config", err)
+		return nil, configFilePath, fmt.Errorf("load config: %w", err)
 	}
 
 	execCachePath, err := ExecutableDirFilePath(cacheFilename)
 	if err != nil {
-		FatalError("get executable path", err)
+		return nil, configFilePath, fmt.Errorf("get executable path: %w", err)
 	}
 	cacheFilePath := execCachePath
 
@@ -77,7 +77,7 @@ func Setup() (cfg *config.AppConfig, cachePath string) {
 	if err != nil {
 		workingCachePath, err := WorkingDirFilePath(cacheFilename)
 		if err != nil {
-			FatalError("get current working dir", err)
+			return nil, configFilePath, fmt.Errorf("get working dir path: %w", err)
 		}
 		_, err = os.Stat(workingCachePath)
 		if err == nil {
@@ -85,7 +85,7 @@ func Setup() (cfg *config.AppConfig, cachePath string) {
 		}
 	}
 
-	return parsedConfig, cacheFilePath
+	return parsedConfig, cacheFilePath, nil
 }
 
 func (app *application) mainPrompt() {
@@ -101,7 +101,7 @@ func (app *application) mainPrompt() {
 func (app *application) search(input string) {
 	results, err := app.bp.Search(input)
 	if err != nil {
-		FatalError("beatport", err)
+		app.FatalError("beatport", err)
 	}
 	trackResultsLen := len(results.Tracks)
 	releasesResultsLen := len(results.Releases)
@@ -167,7 +167,7 @@ func (app *application) parseTextFile(path string) {
 	file, err := os.Open(path)
 	defer file.Close()
 	if err != nil {
-		FatalError("read input text file", err)
+		app.FatalError("read input text file", err)
 	}
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
@@ -184,16 +184,16 @@ var (
 func (app *application) handleUrl(url string) {
 	link, err := app.bp.ParseUrl(url)
 	if err != nil {
-		LogError("parse url", err)
+		app.LogError(fmt.Sprintf("[%s] parse url", url), err)
 		return
 	}
 	switch link.Type {
 	default:
-		LogError("handle url", ErrUnsupportedLinkType)
+		app.LogError("handle url", ErrUnsupportedLinkType)
 	case beatport.TrackLink:
 		track, err := app.bp.GetTrack(link.ID)
 		if err != nil {
-			LogError("fetch track", err)
+			app.LogError(fmt.Sprintf("[%s] fetch track", url), err)
 			return
 		}
 
@@ -201,7 +201,7 @@ func (app *application) handleUrl(url string) {
 		if app.config.SortByContext {
 			release, err := app.bp.GetRelease(track.Release.ID)
 			if err != nil {
-				LogError("fetch release", err)
+				app.LogError(fmt.Sprintf("[%s] fetch track release", url), err)
 				return
 			}
 			releaseDirectory := release.DirectoryName(
@@ -216,13 +216,13 @@ func (app *application) handleUrl(url string) {
 			)
 		}
 		if err := CreateDirectory(downloadsDirectory); err != nil {
-			LogError("create downloads directory", err)
+			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
 			return
 		}
 
 		location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
 		if err != nil {
-			LogError("save track", err)
+			app.LogError(fmt.Sprintf("[%s] save track", url), err)
 			return
 		}
 		var coverPath string
@@ -230,20 +230,20 @@ func (app *application) handleUrl(url string) {
 			coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
 			coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
 			if err = app.downloadFile(coverUrl, coverPath); err != nil {
-				LogError("download file", err)
+				app.LogError(fmt.Sprintf("[%s] download file", url), err)
 				return
 			}
 		}
 
 		if err := app.tagTrack(location, *track, coverPath); err != nil {
-			LogError("tag track", err)
+			app.LogError(fmt.Sprintf("[%s] tag track", url), err)
 			return
 		}
 
 		if app.config.KeepCover && app.config.SortByContext {
 			newPath := filepath.Dir(coverPath) + "/cover.jpg"
 			if err := os.Rename(coverPath, newPath); err != nil {
-				LogError("rename cover", err)
+				app.LogError(fmt.Sprintf("[%s] rename cover", url), err)
 				return
 			}
 		} else {
@@ -252,7 +252,7 @@ func (app *application) handleUrl(url string) {
 	case beatport.ReleaseLink:
 		release, err := app.bp.GetRelease(link.ID)
 		if err != nil {
-			LogError("fetch release", err)
+			app.LogError(fmt.Sprintf("[%s] fetch release", url), err)
 			return
 		}
 		downloadsDirectory := app.config.DownloadsDirectory
@@ -268,7 +268,7 @@ func (app *application) handleUrl(url string) {
 			)
 		}
 		if err := CreateDirectory(downloadsDirectory); err != nil {
-			LogError("create downloads directory", err)
+			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
 			return
 		}
 
@@ -277,7 +277,7 @@ func (app *application) handleUrl(url string) {
 			coverUrl := release.Image.FormattedUrl(app.config.CoverSize)
 			coverPath = downloadsDirectory + "/" + uuid.New().String()
 			if err = app.downloadFile(coverUrl, coverPath); err != nil {
-				LogError("download cover", err)
+				app.LogError(fmt.Sprintf("[%s] download cover", url), err)
 			}
 		}
 
@@ -287,16 +287,16 @@ func (app *application) handleUrl(url string) {
 				trackLink, _ := app.bp.ParseUrl(trackUrl)
 				track, err := app.bp.GetTrack(trackLink.ID)
 				if err != nil {
-					LogError("fetch track", err)
+					app.LogError(fmt.Sprintf("[%s] fetch track '%d'", url, trackLink.ID), err)
 					return
 				}
 				location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
 				if err != nil {
-					LogError("save track", err)
+					app.LogError(fmt.Sprintf("[%s] save track '%d'", url, trackLink.ID), err)
 					return
 				}
 				if err := app.tagTrack(location, *track, coverPath); err != nil {
-					LogError("tag track", err)
+					app.LogError(fmt.Sprintf("[%s] tag track '%d'", url, trackLink.ID), err)
 					return
 				}
 			})
@@ -305,7 +305,7 @@ func (app *application) handleUrl(url string) {
 		if app.config.KeepCover && app.config.SortByContext {
 			newPath := filepath.Dir(coverPath) + "/cover.jpg"
 			if err := os.Rename(coverPath, newPath); err != nil {
-				LogError("rename cover", err)
+				app.LogError(fmt.Sprintf("[%s] rename cover", url), err)
 				return
 			}
 		} else {
@@ -314,7 +314,7 @@ func (app *application) handleUrl(url string) {
 	case beatport.PlaylistLink:
 		playlist, err := app.bp.GetPlaylist(link.ID)
 		if err != nil {
-			LogError("fetch playlist", err)
+			app.LogError(fmt.Sprintf("[%s] fetch playlist", url), err)
 			return
 		}
 		downloadsDirectory := app.config.DownloadsDirectory
@@ -325,7 +325,7 @@ func (app *application) handleUrl(url string) {
 			)
 		}
 		if err := CreateDirectory(downloadsDirectory); err != nil {
-			LogError("create downloads directory", err)
+			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
 			return
 		}
 
@@ -333,7 +333,7 @@ func (app *application) handleUrl(url string) {
 		for {
 			items, err := app.bp.GetPlaylistItems(link.ID, page)
 			if err != nil {
-				LogError("fetch playlist items", err)
+				app.LogError(fmt.Sprintf("[%s] fetch playlist items", url), err)
 				return
 			}
 			for _, item := range items.Results {
@@ -341,7 +341,7 @@ func (app *application) handleUrl(url string) {
 					item.Track.Number = item.Position
 					location, err := app.saveTrack(item.Track, downloadsDirectory, app.config.Quality)
 					if err != nil {
-						LogError("save track", err)
+						app.LogError(fmt.Sprintf("[%s] save track '%d'", url, item.Track.ID), err)
 						return
 					}
 					var coverPath string
@@ -349,14 +349,14 @@ func (app *application) handleUrl(url string) {
 						coverUrl := item.Track.Release.Image.FormattedUrl(app.config.CoverSize)
 						coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
 						if err = app.downloadFile(coverUrl, coverPath); err != nil {
-							LogError("download file", err)
+							app.LogError(fmt.Sprintf("[%s] download track cover '%d'", url, item.Track.ID), err)
 							return
 						}
 						defer os.Remove(coverPath)
 					}
 
 					if err := app.tagTrack(location, item.Track, coverPath); err != nil {
-						LogError("tag track", err)
+						app.LogError(fmt.Sprintf("[%s] tag track '%d'", url, item.Track.ID), err)
 						return
 					}
 				})
@@ -371,7 +371,7 @@ func (app *application) handleUrl(url string) {
 	case beatport.ChartLink:
 		chart, err := app.bp.GetChart(link.ID)
 		if err != nil {
-			LogError("fetch chart", err)
+			app.LogError(fmt.Sprintf("[%s] fetch chart", url), err)
 			return
 		}
 		downloadsDirectory := app.config.DownloadsDirectory
@@ -382,14 +382,14 @@ func (app *application) handleUrl(url string) {
 			)
 		}
 		if err := CreateDirectory(downloadsDirectory); err != nil {
-			LogError("create downloads directory", err)
+			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
 			return
 		}
 		if app.config.KeepCover && app.config.SortByContext {
 			app.background(func() {
 				coverPath := downloadsDirectory + "/cover.jpg"
 				if err = app.downloadFile(chart.Image.FormattedUrl(app.config.CoverSize), coverPath); err != nil {
-					LogError("download cover", err)
+					app.LogError(fmt.Sprintf("[%s] download chart cover", url), err)
 				}
 			})
 		}
@@ -398,7 +398,7 @@ func (app *application) handleUrl(url string) {
 		for {
 			tracks, err := app.bp.GetChartTracks(link.ID, page)
 			if err != nil {
-				LogError("fetch chart", err)
+				app.LogError(fmt.Sprintf("[%s] fetch chart tracks", url), err)
 				return
 			}
 			for index, track := range tracks.Results {
@@ -406,7 +406,7 @@ func (app *application) handleUrl(url string) {
 					track.Number = index + 1
 					location, err := app.saveTrack(track, downloadsDirectory, app.config.Quality)
 					if err != nil {
-						LogError("save track", err)
+						app.LogError(fmt.Sprintf("[%s] save track '%d'", url, track.ID), err)
 						return
 					}
 					var coverPath string
@@ -414,14 +414,14 @@ func (app *application) handleUrl(url string) {
 						coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
 						coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
 						if err = app.downloadFile(coverUrl, coverPath); err != nil {
-							LogError("download file", err)
+							app.LogError(fmt.Sprintf("[%s] save track '%d'", url, track.ID), err)
 							return
 						}
 						defer os.Remove(coverPath)
 					}
 
 					if err := app.tagTrack(location, track, coverPath); err != nil {
-						LogError("tag track", err)
+						app.LogError(fmt.Sprintf("[%s] tag track '%d'", url, track.ID), err)
 						return
 					}
 				})

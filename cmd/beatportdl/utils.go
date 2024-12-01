@@ -82,13 +82,16 @@ func Pause() {
 	os.Exit(1)
 }
 
-func LogError(caller string, err error) {
-	message := fmt.Sprintf("%s: %s", caller, err.Error())
-	fmt.Println(message)
+func (app *application) LogError(caller string, err error) {
+	message := fmt.Sprintf("%s: %s\n", caller, err.Error())
+	fmt.Print(message)
+	if app.log != nil {
+		app.log.WriteString(message)
+	}
 }
 
-func FatalError(caller string, err error) {
-	LogError(caller, err)
+func (app *application) FatalError(caller string, err error) {
+	app.LogError(caller, err)
 	Pause()
 }
 
