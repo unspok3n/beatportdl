@@ -210,6 +210,12 @@ func (app *application) handleUrl(url string) {
 				app.config.ArtistsLimit,
 				app.config.ArtistsShortForm,
 			)
+			if app.config.CreateLabelDirectory {
+				downloadsDirectory = fmt.Sprintf("%s/%s",
+					downloadsDirectory,
+					release.Label.NameSanitized(),
+				)
+			}
 			downloadsDirectory = fmt.Sprintf("%s/%s",
 				downloadsDirectory,
 				releaseDirectory,
@@ -257,8 +263,14 @@ func (app *application) handleUrl(url string) {
 		}
 		downloadsDirectory := app.config.DownloadsDirectory
 		if app.config.SortByContext {
+			if app.config.CreateLabelDirectory {
+				downloadsDirectory = fmt.Sprintf("%s/%s",
+					downloadsDirectory,
+					release.Label.NameSanitized(),
+				)
+			}
 			downloadsDirectory = fmt.Sprintf("%s/%s",
-				app.config.DownloadsDirectory,
+				downloadsDirectory,
 				release.DirectoryName(
 					app.config.ReleaseDirectoryTemplate,
 					app.config.WhitespaceCharacter,
@@ -320,7 +332,7 @@ func (app *application) handleUrl(url string) {
 		downloadsDirectory := app.config.DownloadsDirectory
 		if app.config.SortByContext {
 			downloadsDirectory = fmt.Sprintf("%s/%s",
-				app.config.DownloadsDirectory,
+				downloadsDirectory,
 				playlist.Name,
 			)
 		}

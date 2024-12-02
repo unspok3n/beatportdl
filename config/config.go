@@ -14,6 +14,7 @@ type AppConfig struct {
 	DownloadsDirectory       string `yaml:"downloads_directory,omitempty"`
 	Quality                  string `yaml:"quality,omitempty"`
 	SortByContext            bool   `yaml:"sort_by_context,omitempty"`
+	CreateLabelDirectory     bool   `yaml:"create_label_directory,omitempty"`
 	CoverSize                string `yaml:"cover_size,omitempty"`
 	KeepCover                bool   `yaml:"keep_cover,omitempty"`
 	FixTags                  bool   `yaml:"fix_tags,omitempty"`
