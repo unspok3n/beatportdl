@@ -20,6 +20,7 @@ type application struct {
 	log    *os.File
 	bp     *beatport.Beatport
 	wg     sync.WaitGroup
+	sem    chan struct{}
 	urls   []string
 }
 
@@ -32,6 +33,7 @@ func main() {
 
 	app := &application{
 		config: cfg,
+		sem:    make(chan struct{}, cfg.MaxWorkers),
 	}
 
 	if cfg.WriteErrorLog {

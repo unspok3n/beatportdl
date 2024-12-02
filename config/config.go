@@ -19,6 +19,7 @@ type AppConfig struct {
 	KeepCover                bool   `yaml:"keep_cover,omitempty"`
 	FixTags                  bool   `yaml:"fix_tags,omitempty"`
 	WriteErrorLog            bool   `yaml:"write_error_log,omitempty"`
+	MaxWorkers               int    `yaml:"max_workers,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
 	ArtistsLimit             int    `yaml:"artists_limit,omitempty"`
@@ -44,6 +45,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		ArtistsLimit:             3,
 		ArtistsShortForm:         "VA",
 		FixTags:                  true,
+		MaxWorkers:               15,
 	}
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {

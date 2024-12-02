@@ -13,9 +13,11 @@ import (
 
 func (app *application) background(fn func()) {
 	app.wg.Add(1)
+	app.sem <- struct{}{}
 
 	go func() {
 		defer app.wg.Done()
+		defer func() { <-app.sem }()
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf(fmt.Errorf("%s", err).Error())
@@ -27,9 +29,11 @@ func (app *application) background(fn func()) {
 
 func (app *application) backgroundCustom(wg *sync.WaitGroup, fn func()) {
 	wg.Add(1)
+	app.sem <- struct{}{}
 
 	go func() {
 		defer wg.Done()
+		defer func() { <-app.sem }()
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf(fmt.Errorf("%s", err).Error())
