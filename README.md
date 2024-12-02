@@ -25,29 +25,29 @@ Setup
 This will create a new `beatportdl-config.yml` file. You can put the following options and values into the config file:
 
 ---
-| Option                       | Default Value                             | Type           | Description                                                                                                       |
-|------------------------------|-------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------|
-| `username`                   |                                           | String         | Beatport username                                                                                                 |
-| `password`                   |                                           | String         | Beatport password                                                                                                 |
-| `quality`                    | lossless                                  | String         | Download quality *(medium-hls, medium, high, lossless)*                                                           |
-| `downloads_directory`        |                                           | String  | Location for the downloads directory                                                                                               |
-| `sort_by_context`            | false                                     | Boolean        | Create a directory for each release, playlist, or chart                                                           |
-| `cover_size`                 | 1400x1400                                 | String         | Cover art size for `keep_cover` and track metadata (if `fix_tags` is enabled)  *[max: 1400x1400]*                 |
-| `keep_cover`                 | false                                     | Boolean        | Download cover art file (cover.jpg) to the context directory (works only if `sort_by_context` is enabled)         |
-| `fix_tags`                   | true                                      | Boolean        | Add missing metadata to M4A (AAC) files and remove useless tags from FLAC files (e.g., Purchased at Beatport.com) |
-| `track_file_template`        | {number}. {artists} - {name} ({mix_name}) | String         | Track filename template                                                                                           |
-| `release_directory_template` | [{catalog_number}] {artists} - {name}     | String     | Release directory name template                                                                                   |
-| `whitespace_character`       |                                           | String         | Whitespace character for track filenames and release directories                                                  |
-| `proxy`                      |                                           | URL            | Proxy URL                                                                                                         |
-
+| Option                       | Default Value                             | Type    | Description                                                                                                       |
+|------------------------------|-------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------|
+| `username`                   |                                           | String  | Beatport username                                                                                                 |
+| `password`                   |                                           | String  | Beatport password                                                                                                 |
+| `quality`                    | lossless                                  | String  | Download quality *(medium-hls, medium, high, lossless)*                                                           |
+| `downloads_directory`        |                                           | String  | Location for the downloads directory                                                                              |
+| `sort_by_context`            | false                                     | Boolean | Create a directory for each release, playlist, or chart                                                           |
+| `cover_size`                 | 1400x1400                                 | String  | Cover art size for `keep_cover` and track metadata (if `fix_tags` is enabled)  *[max: 1400x1400]*                 |
+| `keep_cover`                 | false                                     | Boolean | Download cover art file (cover.jpg) to the context directory (works only if `sort_by_context` is enabled)         |
+| `fix_tags`                   | true                                      | Boolean | Add missing metadata to M4A (AAC) files and remove useless tags from FLAC files (e.g., Purchased at Beatport.com) |
+| `track_file_template`        | {number}. {artists} - {name} ({mix_name}) | String  | Track filename template                                                                                           |
+| `release_directory_template` | [{catalog_number}] {artists} - {name}     | String  | Release directory name template                                                                                   |
+| `whitespace_character`       |                                           | String  | Whitespace character for track filenames and release directories                                                  |
+| `proxy`                      |                                           | String  | Proxy URL                                                                                                         |
 
 Download quality options, per Beatport subscription type:
-| Option       | Description                                                                                   | Requires at least                    | Notes                                                                                       |
-|--------------|-----------------------------------------------------------------------------------------------|----------------------------------|---------------------------------------------------------------------------------------------|
-| `medium-hls` | 128 kbps AAC through `/stream` endpoint (IMPORTANT: requires [ffmpeg](https://www.ffmpeg.org/download.html) to be installed) | Essential | Same as `medium` on Advanced but uses a slightly slower download method                     |
-| `medium`     | 128 kbps AAC                                                                                 | Advanced              |                                                                                             |
-| `high`       | 256 kbps AAC                                                                                 | Advanced           |                                                                                             |
-| `lossless`   | 44.1 kHz FLAC                                                                                | Professional                     |                                                                                             |
+
+| Option       | Description                                                                                                                  | Requires at least | Notes                                                                   |
+|--------------|------------------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------|
+| `medium-hls` | 128 kbps AAC through `/stream` endpoint (IMPORTANT: requires [ffmpeg](https://www.ffmpeg.org/download.html) to be installed) | Essential         | Same as `medium` on Advanced but uses a slightly slower download method |
+| `medium`     | 128 kbps AAC                                                                                                                 | Advanced          |                                                                         |
+| `high`       | 256 kbps AAC                                                                                                                 | Professional      |                                                                         |
+| `lossless`   | 44.1 kHz FLAC                                                                                                                | Professional      |                                                                         |
 
 If the Beatport credentials are correct, you should also see the file `beatportdl-credentials.json` appear in the BeatportDL directory.
 *If you accidentally entered an incorrect password and got an error, you can always manually edit the config file*
