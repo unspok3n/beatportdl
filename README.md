@@ -75,8 +75,7 @@ Enter url or search query:
 ./beatportdl file.txt file2.txt
 ```
 
-URL types that are currently supported: **Tracks, Releases, Playlists, Charts**
-(Labels & Artist coming soon!)
+URL types that are supported: **Tracks, Releases, Labels, Artist, Playlists, Charts**
 
 Building
 ---
