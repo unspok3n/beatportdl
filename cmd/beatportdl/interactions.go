@@ -225,36 +225,37 @@ func (app *application) handleUrl(url string) {
 			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
 			return
 		}
-
-		location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
-		if err != nil {
-			app.LogError(fmt.Sprintf("[%s] save track", url), err)
-			return
-		}
-		var coverPath string
-		if app.requireCover(true) {
-			coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
-			coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
-			if err = app.downloadFile(coverUrl, coverPath); err != nil {
-				app.LogError(fmt.Sprintf("[%s] download file", url), err)
+		app.withSemaphore(func() {
+			location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
+			if err != nil {
+				app.LogError(fmt.Sprintf("[%s] save track", url), err)
 				return
 			}
-		}
+			var coverPath string
+			if app.requireCover(true) {
+				coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
+				coverPath = fmt.Sprintf("%s/%s", downloadsDirectory, uuid.New().String())
+				if err = app.downloadFile(coverUrl, coverPath); err != nil {
+					app.LogError(fmt.Sprintf("[%s] download file", url), err)
+					return
+				}
+			}
 
-		if err := app.tagTrack(location, *track, coverPath); err != nil {
-			app.LogError(fmt.Sprintf("[%s] tag track", url), err)
-			return
-		}
-
-		if app.config.KeepCover && app.config.SortByContext {
-			newPath := filepath.Dir(coverPath) + "/cover.jpg"
-			if err := os.Rename(coverPath, newPath); err != nil {
-				app.LogError(fmt.Sprintf("[%s] rename cover", url), err)
+			if err := app.tagTrack(location, *track, coverPath); err != nil {
+				app.LogError(fmt.Sprintf("[%s] tag track", url), err)
 				return
 			}
-		} else {
-			os.Remove(coverPath)
-		}
+
+			if app.config.KeepCover && app.config.SortByContext {
+				newPath := filepath.Dir(coverPath) + "/cover.jpg"
+				if err := os.Rename(coverPath, newPath); err != nil {
+					app.LogError(fmt.Sprintf("[%s] rename cover", url), err)
+					return
+				}
+			} else {
+				os.Remove(coverPath)
+			}
+		})
 	case beatport.ReleaseLink:
 		release, err := app.bp.GetRelease(link.ID)
 		if err != nil {
@@ -295,7 +296,7 @@ func (app *application) handleUrl(url string) {
 
 		wg := sync.WaitGroup{}
 		for _, trackUrl := range release.TrackUrls {
-			app.backgroundCustom(&wg, func() {
+			app.withSemaphoreCustom(&wg, func() {
 				trackLink, _ := app.bp.ParseUrl(trackUrl)
 				track, err := app.bp.GetTrack(trackLink.ID)
 				if err != nil {
@@ -349,7 +350,7 @@ func (app *application) handleUrl(url string) {
 				return
 			}
 			for _, item := range items.Results {
-				app.background(func() {
+				app.withSemaphore(func() {
 					item.Track.Number = item.Position
 					location, err := app.saveTrack(item.Track, downloadsDirectory, app.config.Quality)
 					if err != nil {
@@ -398,7 +399,7 @@ func (app *application) handleUrl(url string) {
 			return
 		}
 		if app.config.KeepCover && app.config.SortByContext {
-			app.background(func() {
+			app.withSemaphore(func() {
 				coverPath := downloadsDirectory + "/cover.jpg"
 				if err = app.downloadFile(chart.Image.FormattedUrl(app.config.CoverSize), coverPath); err != nil {
 					app.LogError(fmt.Sprintf("[%s] download chart cover", url), err)
@@ -414,7 +415,7 @@ func (app *application) handleUrl(url string) {
 				return
 			}
 			for index, track := range tracks.Results {
-				app.background(func() {
+				app.withSemaphore(func() {
 					track.Number = index + 1
 					location, err := app.saveTrack(track, downloadsDirectory, app.config.Quality)
 					if err != nil {
@@ -435,6 +436,200 @@ func (app *application) handleUrl(url string) {
 					if err := app.tagTrack(location, track, coverPath); err != nil {
 						app.LogError(fmt.Sprintf("[%s] tag track '%d'", url, track.ID), err)
 						return
+					}
+				})
+			}
+
+			if tracks.Next == nil {
+				break
+			}
+
+			page++
+		}
+	case beatport.LabelLink:
+		label, err := app.bp.GetLabel(link.ID)
+		if err != nil {
+			app.LogError(fmt.Sprintf("[%s] fetch label", url), err)
+			return
+		}
+		downloadsDirectory := app.config.DownloadsDirectory
+		if app.config.SortByContext {
+			downloadsDirectory = fmt.Sprintf("%s/%s",
+				app.config.DownloadsDirectory,
+				label.NameSanitized(),
+			)
+		}
+		if err := CreateDirectory(downloadsDirectory); err != nil {
+			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
+			return
+		}
+
+		page := 1
+		for {
+			releases, err := app.bp.GetLabelReleases(link.ID, page)
+			if err != nil {
+				app.LogError(fmt.Sprintf("[%s] fetch label releases", url), err)
+				return
+			}
+			for _, release := range releases.Results {
+				app.background(func() {
+					releaseDirectory := downloadsDirectory
+					if app.config.SortByContext {
+						releaseDirectory = fmt.Sprintf("%s/%s",
+							releaseDirectory,
+							release.DirectoryName(
+								app.config.ReleaseDirectoryTemplate,
+								app.config.WhitespaceCharacter,
+								app.config.ArtistsLimit,
+								app.config.ArtistsShortForm,
+							),
+						)
+						if err := CreateDirectory(releaseDirectory); err != nil {
+							app.LogError(fmt.Sprintf("[%s] create downloads directory for release '%d'", url, release.ID), err)
+							return
+						}
+					}
+
+					var coverPath string
+					if app.requireCover(true) {
+						coverUrl := release.Image.FormattedUrl(app.config.CoverSize)
+						coverPath = releaseDirectory + "/" + uuid.New().String()
+						app.withSemaphore(func() {
+							if err = app.downloadFile(coverUrl, coverPath); err != nil {
+								app.LogError(fmt.Sprintf("[%s] download cover for release '%d'", url, release.ID), err)
+							}
+						})
+					}
+
+					tPage := 1
+					for {
+						tracks, err := app.bp.GetReleaseTracks(release.ID, tPage)
+						if err != nil {
+							app.LogError(fmt.Sprintf("[%s] fetch label release tracks '%d'", url, release.ID), err)
+							return
+						}
+
+						for _, track := range tracks.Results {
+							app.withSemaphore(func() {
+								trackFull, err := app.bp.GetTrack(track.ID)
+								if err != nil {
+									app.LogError(fmt.Sprintf("[%s] fetch track '%d'", url, track.ID), err)
+									return
+								}
+								location, err := app.saveTrack(*trackFull, releaseDirectory, app.config.Quality)
+								if err != nil {
+									app.LogError(fmt.Sprintf("[%s] save track '%d'", url, trackFull.ID), err)
+									return
+								}
+								if err := app.tagTrack(location, *trackFull, coverPath); err != nil {
+									app.LogError(fmt.Sprintf("[%s] tag track '%d'", url, trackFull.ID), err)
+									return
+								}
+							})
+						}
+
+						if tracks.Next == nil {
+							break
+						}
+						tPage++
+					}
+
+					if app.config.KeepCover && app.config.SortByContext {
+						newPath := filepath.Dir(coverPath) + "/cover.jpg"
+						if err := os.Rename(coverPath, newPath); err != nil {
+							app.LogError(fmt.Sprintf("[%s] rename cover", url), err)
+							return
+						}
+					} else {
+						os.Remove(coverPath)
+					}
+				})
+			}
+
+			if releases.Next == nil {
+				break
+			}
+
+			page++
+		}
+	case beatport.ArtistLink:
+		artist, err := app.bp.GetArtist(link.ID)
+		if err != nil {
+			app.LogError(fmt.Sprintf("[%s] fetch artist", url), err)
+		}
+		downloadsDirectory := app.config.DownloadsDirectory
+		if app.config.SortByContext {
+			downloadsDirectory = fmt.Sprintf("%s/%s", downloadsDirectory, artist.NameSanitized())
+		}
+
+		if err := CreateDirectory(downloadsDirectory); err != nil {
+			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
+			return
+		}
+
+		page := 1
+		for {
+			tracks, err := app.bp.GetArtistTracks(link.ID, page)
+			if err != nil {
+				app.LogError(fmt.Sprintf("[%s] fetch artist tracks", url), err)
+				return
+			}
+			for _, track := range tracks.Results {
+				app.withSemaphore(func() {
+					trackFull, err := app.bp.GetTrack(track.ID)
+					if err != nil {
+						app.LogError(fmt.Sprintf("[%s] fetch track '%d'", url, track.ID), err)
+						return
+					}
+					releaseDownloadsDirectory := downloadsDirectory
+					if app.config.SortByContext {
+						release, err := app.bp.GetRelease(track.Release.ID)
+						if err != nil {
+							app.LogError(fmt.Sprintf("[%s] fetch track release '%d'", url, track.ID), err)
+							return
+						}
+						releaseDownloadsDirectory = fmt.Sprintf("%s/%s",
+							releaseDownloadsDirectory,
+							release.DirectoryName(
+								app.config.ReleaseDirectoryTemplate,
+								app.config.WhitespaceCharacter,
+								app.config.ArtistsLimit,
+								app.config.ArtistsShortForm,
+							),
+						)
+						if err := CreateDirectory(releaseDownloadsDirectory); err != nil {
+							app.LogError(fmt.Sprintf("[%s] create downloads directory for track '%d'", url, track.ID), err)
+							return
+						}
+					}
+
+					var coverPath string
+					if app.requireCover(true) {
+						coverUrl := track.Release.Image.FormattedUrl(app.config.CoverSize)
+						coverPath = releaseDownloadsDirectory + "/" + uuid.New().String()
+						if err = app.downloadFile(coverUrl, coverPath); err != nil {
+							app.LogError(fmt.Sprintf("[%s] download cover", url), err)
+						}
+					}
+
+					location, err := app.saveTrack(*trackFull, releaseDownloadsDirectory, app.config.Quality)
+					if err != nil {
+						app.LogError(fmt.Sprintf("[%s] save track '%d'", url, track.ID), err)
+						return
+					}
+					if err := app.tagTrack(location, *trackFull, coverPath); err != nil {
+						app.LogError(fmt.Sprintf("[%s] tag track '%d'", url, track.ID), err)
+						return
+					}
+
+					if app.config.KeepCover && app.config.SortByContext {
+						newPath := filepath.Dir(coverPath) + "/cover.jpg"
+						if err := os.Rename(coverPath, newPath); err != nil {
+							app.LogError(fmt.Sprintf("[%s] rename cover", url), err)
+							return
+						}
+					} else {
+						os.Remove(coverPath)
 					}
 				})
 			}

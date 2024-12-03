@@ -13,9 +13,23 @@ import (
 
 func (app *application) background(fn func()) {
 	app.wg.Add(1)
-	app.sem <- struct{}{}
 
 	go func() {
+		defer app.wg.Done()
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf(fmt.Errorf("%s", err).Error())
+			}
+		}()
+		fn()
+	}()
+}
+
+func (app *application) withSemaphore(fn func()) {
+	app.wg.Add(1)
+
+	go func() {
+		app.sem <- struct{}{}
 		defer app.wg.Done()
 		defer func() { <-app.sem }()
 		defer func() {
@@ -27,11 +41,11 @@ func (app *application) background(fn func()) {
 	}()
 }
 
-func (app *application) backgroundCustom(wg *sync.WaitGroup, fn func()) {
+func (app *application) withSemaphoreCustom(wg *sync.WaitGroup, fn func()) {
 	wg.Add(1)
-	app.sem <- struct{}{}
 
 	go func() {
+		app.sem <- struct{}{}
 		defer wg.Done()
 		defer func() { <-app.sem }()
 		defer func() {

@@ -33,7 +33,7 @@ func main() {
 
 	app := &application{
 		config: cfg,
-		sem:    make(chan struct{}, cfg.MaxWorkers),
+		sem:    make(chan struct{}, cfg.MaxDownloadWorkers),
 	}
 
 	if cfg.WriteErrorLog {

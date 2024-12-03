@@ -16,6 +16,8 @@ var (
 	ReleaseLink  LinkType = "releases"
 	PlaylistLink LinkType = "playlists"
 	ChartLink    LinkType = "charts"
+	LabelLink    LinkType = "labels"
+	ArtistLink   LinkType = "artists"
 )
 
 type Link struct {
@@ -63,6 +65,10 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 			linkType = PlaylistLink
 		case "chart":
 			linkType = ChartLink
+		case "label":
+			linkType = LabelLink
+		case "artist":
+			linkType = ArtistLink
 		default:
 			return nil, fmt.Errorf("invalid link type: %s", segments[0])
 		}
