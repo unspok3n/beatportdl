@@ -198,12 +198,12 @@ func (app *application) handleUrl(url string) {
 		}
 
 		downloadsDirectory := app.config.DownloadsDirectory
+		release, err := app.bp.GetRelease(track.Release.ID)
+		if err != nil {
+			app.LogError(fmt.Sprintf("[%s] fetch track release", url), err)
+			return
+		}
 		if app.config.SortByContext {
-			release, err := app.bp.GetRelease(track.Release.ID)
-			if err != nil {
-				app.LogError(fmt.Sprintf("[%s] fetch track release", url), err)
-				return
-			}
 			releaseDirectory := release.DirectoryName(
 				app.config.ReleaseDirectoryTemplate,
 				app.config.WhitespaceCharacter,
@@ -225,6 +225,7 @@ func (app *application) handleUrl(url string) {
 			app.LogError(fmt.Sprintf("[%s] create downloads directory", url), err)
 			return
 		}
+		track.Release = *release
 		app.withSemaphore(func() {
 			location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
 			if err != nil {
@@ -303,6 +304,7 @@ func (app *application) handleUrl(url string) {
 					app.LogError(fmt.Sprintf("[%s] fetch track '%d'", url, trackLink.ID), err)
 					return
 				}
+				track.Release = *release
 				location, err := app.saveTrack(*track, downloadsDirectory, app.config.Quality)
 				if err != nil {
 					app.LogError(fmt.Sprintf("[%s] save track '%d'", url, trackLink.ID), err)
@@ -352,6 +354,12 @@ func (app *application) handleUrl(url string) {
 			for _, item := range items.Results {
 				app.withSemaphore(func() {
 					item.Track.Number = item.Position
+					release, err := app.bp.GetRelease(item.Track.Release.ID)
+					if err != nil {
+						app.LogError(fmt.Sprintf("[%s] fetch track release '%d'", url, item.Track.ID), err)
+						return
+					}
+					item.Track.Release = *release
 					location, err := app.saveTrack(item.Track, downloadsDirectory, app.config.Quality)
 					if err != nil {
 						app.LogError(fmt.Sprintf("[%s] save track '%d'", url, item.Track.ID), err)
@@ -417,6 +425,12 @@ func (app *application) handleUrl(url string) {
 			for index, track := range tracks.Results {
 				app.withSemaphore(func() {
 					track.Number = index + 1
+					release, err := app.bp.GetRelease(track.Release.ID)
+					if err != nil {
+						app.LogError(fmt.Sprintf("[%s] fetch track release '%d'", url, track.ID), err)
+						return
+					}
+					track.Release = *release
 					location, err := app.saveTrack(track, downloadsDirectory, app.config.Quality)
 					if err != nil {
 						app.LogError(fmt.Sprintf("[%s] save track '%d'", url, track.ID), err)
@@ -516,6 +530,7 @@ func (app *application) handleUrl(url string) {
 									app.LogError(fmt.Sprintf("[%s] fetch track '%d'", url, track.ID), err)
 									return
 								}
+								trackFull.Release = release
 								location, err := app.saveTrack(*trackFull, releaseDirectory, app.config.Quality)
 								if err != nil {
 									app.LogError(fmt.Sprintf("[%s] save track '%d'", url, trackFull.ID), err)
@@ -582,12 +597,14 @@ func (app *application) handleUrl(url string) {
 						return
 					}
 					releaseDownloadsDirectory := downloadsDirectory
+
+					release, err := app.bp.GetRelease(track.Release.ID)
+					if err != nil {
+						app.LogError(fmt.Sprintf("[%s] fetch track release '%d'", url, track.ID), err)
+						return
+					}
+					track.Release = *release
 					if app.config.SortByContext {
-						release, err := app.bp.GetRelease(track.Release.ID)
-						if err != nil {
-							app.LogError(fmt.Sprintf("[%s] fetch track release '%d'", url, track.ID), err)
-							return
-						}
 						releaseDownloadsDirectory = fmt.Sprintf("%s/%s",
 							releaseDownloadsDirectory,
 							release.DirectoryName(
@@ -737,6 +754,7 @@ var (
 		"RELEASE_TIME",
 		"TRACK_URL",
 		"YEAR",
+		"IENG",
 	}
 )
 
@@ -759,6 +777,12 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		}
 		file.SetProperty("DATE", date)
 		file.SetProperty("KEY", key)
+		file.SetProperty("ALBUMARTIST", track.Release.ArtistsDisplay(
+			beatport.ArtistTypeMain,
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
+		))
+		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber)
 	}
 
 	if fileExt == ".m4a" {
@@ -770,6 +794,12 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			app.config.ArtistsLimit,
 			app.config.ArtistsShortForm,
 		))
+		file.SetProperty("ALBUMARTIST", track.Release.ArtistsDisplay(
+			beatport.ArtistTypeMain,
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
+		))
+		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber)
 		file.SetProperty("DATE", track.PublishDate)
 		file.SetProperty("BPM", strconv.Itoa(track.BPM))
 		file.SetProperty("KEY", track.Key.Name)
