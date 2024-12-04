@@ -770,13 +770,11 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	defer file.Close()
 
 	if fileExt == ".flac" {
-		date := file.GetProperty("RECORDING_DATE")
-		key := file.GetProperty("INITIAL_KEY")
 		for _, tag := range beatportTags {
 			file.SetProperty(tag, "")
 		}
-		file.SetProperty("DATE", date)
-		file.SetProperty("KEY", key)
+		file.SetProperty("DATE", track.Release.Date)
+		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
 		file.SetProperty("ALBUMARTIST", track.Release.ArtistsDisplay(
 			beatport.ArtistTypeMain,
 			app.config.ArtistsLimit,
@@ -802,7 +800,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber)
 		file.SetProperty("DATE", track.PublishDate)
 		file.SetProperty("BPM", strconv.Itoa(track.BPM))
-		file.SetProperty("KEY", track.Key.Name)
+		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
 		file.SetProperty("ISRC", track.ISRC)
 		file.SetProperty("LABEL", track.Release.Label.Name)
 	}

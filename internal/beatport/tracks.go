@@ -13,7 +13,7 @@ type Track struct {
 	Name        string   `json:"name"`
 	MixName     string   `json:"mix_name"`
 	Number      int      `json:"number"`
-	Key         TrackKey `json:"key"`
+	Key         Key      `json:"key"`
 	BPM         int      `json:"bpm"`
 	Genre       Genre    `json:"genre"`
 	ISRC        string   `json:"isrc"`
@@ -24,10 +24,6 @@ type Track struct {
 	PublishDate string   `json:"publish_date"`
 	Release     Release  `json:"release"`
 	URL         string   `json:"url"`
-}
-
-type TrackKey struct {
-	Name string `json:"name"`
 }
 
 type Genre struct {

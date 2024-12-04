@@ -24,6 +24,7 @@ type AppConfig struct {
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
 	ArtistsLimit             int    `yaml:"artists_limit,omitempty"`
 	ArtistsShortForm         string `yaml:"artists_short_form,omitempty"`
+	KeySystem                string `yaml:"key_system,omitempty"`
 	WhitespaceCharacter      string `yaml:"whitespace_character,omitempty"`
 	Proxy                    string `yaml:"proxy,omitempty"`
 }
@@ -31,6 +32,23 @@ type AppConfig struct {
 const (
 	DefaultCoverSize = "1400x1400"
 )
+
+var (
+	SupportedKeySystems = []string{
+		"openkey",
+		"openkey-short",
+		"camelot",
+	}
+)
+
+func PermittedValue[T comparable](value T, permittedValues ...T) bool {
+	for i := range permittedValues {
+		if value == permittedValues[i] {
+			return true
+		}
+	}
+	return false
+}
 
 func Parse(filePath string) (*AppConfig, error) {
 	file, err := os.Open(filePath)
@@ -44,6 +62,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		ReleaseDirectoryTemplate: "[{catalog_number}] {artists} - {name}",
 		ArtistsLimit:             3,
 		ArtistsShortForm:         "VA",
+		KeySystem:                "openkey-short",
 		FixTags:                  true,
 		MaxDownloadWorkers:       15,
 	}
@@ -58,6 +77,10 @@ func Parse(filePath string) (*AppConfig, error) {
 
 	if config.Quality == "medium-hls" && !beatport.FFMPEGInstalled() {
 		return nil, beatport.ErrFfmpegNotFound
+	}
+
+	if !PermittedValue(config.KeySystem, SupportedKeySystems...) {
+		return nil, fmt.Errorf("invalid key system")
 	}
 
 	if config.DownloadsDirectory == "" {
