@@ -290,9 +290,11 @@ func (app *application) handleUrl(url string) {
 		if app.requireCover(true) {
 			coverUrl := release.Image.FormattedUrl(app.config.CoverSize)
 			coverPath = downloadsDirectory + "/" + uuid.New().String()
+			app.sem <- struct{}{}
 			if err = app.downloadFile(coverUrl, coverPath); err != nil {
 				app.LogError(fmt.Sprintf("[%s] download cover", url), err)
 			}
+			<-app.sem
 		}
 
 		wg := sync.WaitGroup{}
@@ -508,11 +510,11 @@ func (app *application) handleUrl(url string) {
 					if app.requireCover(true) {
 						coverUrl := release.Image.FormattedUrl(app.config.CoverSize)
 						coverPath = releaseDirectory + "/" + uuid.New().String()
-						app.withSemaphore(func() {
-							if err = app.downloadFile(coverUrl, coverPath); err != nil {
-								app.LogError(fmt.Sprintf("[%s] download cover for release '%d'", url, release.ID), err)
-							}
-						})
+						app.sem <- struct{}{}
+						if err = app.downloadFile(coverUrl, coverPath); err != nil {
+							app.LogError(fmt.Sprintf("[%s] download cover for release '%d'", url, release.ID), err)
+						}
+						<-app.sem
 					}
 
 					tPage := 1
