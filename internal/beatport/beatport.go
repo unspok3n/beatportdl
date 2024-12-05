@@ -52,6 +52,24 @@ type Image struct {
 	DynamicURI string `json:"dynamic_uri"`
 }
 
+type SanitizedString string
+
+func (s *SanitizedString) UnmarshalJSON(data []byte) error {
+	rawValue := string(bytes.Trim(data, `"`))
+	r := strings.NewReplacer(
+		"\\n", "",
+		"\\r", "",
+		"\\t", "",
+	)
+	sanitized := r.Replace(rawValue)
+	*s = SanitizedString(strings.Join(strings.Fields(sanitized), " "))
+	return nil
+}
+
+func (s *SanitizedString) String() string {
+	return string(*s)
+}
+
 type ArtistType string
 
 var (

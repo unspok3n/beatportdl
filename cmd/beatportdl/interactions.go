@@ -121,8 +121,8 @@ func (app *application) search(input string) {
 				app.config.ArtistsLimit,
 				app.config.ArtistsShortForm,
 			),
-			track.Name,
-			track.MixName,
+			track.Name.String(),
+			track.MixName.String(),
 			track.Length,
 		)
 	}
@@ -136,7 +136,7 @@ func (app *application) search(input string) {
 				app.config.ArtistsLimit,
 				app.config.ArtistsShortForm,
 			),
-			release.Name,
+			release.Name.String(),
 			release.Label.Name,
 		)
 	}
@@ -706,7 +706,7 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 		}
 		stream = trackStream
 	}
-	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
+	fmt.Printf("Downloading %s (%s) [%s]\n", track.Name.String(), track.MixName.String(), displayQuality)
 
 	fileName := track.Filename(
 		app.config.TrackFileTemplate,
@@ -735,7 +735,7 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 		}
 	}
 
-	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name, track.MixName, displayQuality)
+	fmt.Printf("Finished downloading %s (%s) [%s]\n", track.Name.String(), track.MixName.String(), displayQuality)
 
 	return filePath, nil
 }
@@ -773,6 +773,10 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		for _, tag := range beatportTags {
 			file.SetProperty(tag, "")
 		}
+		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()))
+		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
+		file.SetProperty("ALBUM", track.Release.Name.String())
+		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
 		file.SetProperty("DATE", track.Release.Date)
 		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
 		file.SetProperty("ALBUMARTIST", track.Release.ArtistsDisplay(
@@ -780,13 +784,13 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			app.config.ArtistsLimit,
 			app.config.ArtistsShortForm,
 		))
-		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber)
+		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
 	}
 
 	if fileExt == ".m4a" {
-		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name, track.MixName))
+		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()))
 		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
-		file.SetProperty("ALBUM", track.Release.Name)
+		file.SetProperty("ALBUM", track.Release.Name.String())
 		file.SetProperty("ARTIST", track.ArtistsDisplay(
 			beatport.ArtistTypeMain,
 			app.config.ArtistsLimit,
@@ -797,7 +801,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			app.config.ArtistsLimit,
 			app.config.ArtistsShortForm,
 		))
-		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber)
+		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
 		file.SetProperty("DATE", track.PublishDate)
 		file.SetProperty("BPM", strconv.Itoa(track.BPM))
 		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))

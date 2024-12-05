@@ -9,16 +9,16 @@ import (
 )
 
 type Release struct {
-	ID            int64    `json:"id"`
-	Name          string   `json:"name"`
-	Artists       []Artist `json:"artists"`
-	Remixers      []Artist `json:"remixers"`
-	CatalogNumber string   `json:"catalog_number"`
-	Label         Label    `json:"label"`
-	Date          string   `json:"new_release_date"`
-	Image         Image    `json:"image"`
-	TrackUrls     []string `json:"tracks"`
-	URL           string   `json:"url"`
+	ID            int64           `json:"id"`
+	Name          SanitizedString `json:"name"`
+	Artists       []Artist        `json:"artists"`
+	Remixers      []Artist        `json:"remixers"`
+	CatalogNumber SanitizedString `json:"catalog_number"`
+	Label         Label           `json:"label"`
+	Date          string          `json:"new_release_date"`
+	Image         Image           `json:"image"`
+	TrackUrls     []string        `json:"tracks"`
+	URL           string          `json:"url"`
 }
 
 func (r *Release) ArtistsDisplay(aType ArtistType, limit int, shortForm string) string {
@@ -89,17 +89,18 @@ func (r *Release) DirectoryName(template string, whitespace string, aLimit int, 
 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
-		"name":           r.Name,
+		"name":           r.Name.String(),
 		"artists":        artistsString,
 		"remixers":       remixersString,
 		"date":           r.Date,
 		"year":           year,
-		"catalog_number": r.CatalogNumber,
+		"catalog_number": r.CatalogNumber.String(),
 	}
 	directoryName := ParseTemplate(template, templateValues)
 
 	for _, char := range charsToRemove {
 		directoryName = strings.Replace(directoryName, char, "", -1)
+		directoryName = strings.Join(strings.Fields(directoryName), " ")
 	}
 
 	if len(directoryName) > 250 {
