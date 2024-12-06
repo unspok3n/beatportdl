@@ -25,13 +25,13 @@ func (app *application) background(fn func()) {
 	}()
 }
 
-func (app *application) withSemaphore(fn func()) {
-	app.wg.Add(1)
+func (app *application) downloadWorker(wg *sync.WaitGroup, fn func()) {
+	wg.Add(1)
 
 	go func() {
-		app.sem <- struct{}{}
-		defer app.wg.Done()
-		defer func() { <-app.sem }()
+		app.semAcquire()
+		defer wg.Done()
+		defer app.semRelease()
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf(fmt.Errorf("%s", err).Error())
@@ -41,20 +41,12 @@ func (app *application) withSemaphore(fn func()) {
 	}()
 }
 
-func (app *application) withSemaphoreCustom(wg *sync.WaitGroup, fn func()) {
-	wg.Add(1)
+func (app *application) semAcquire() {
+	app.sem <- struct{}{}
+}
 
-	go func() {
-		app.sem <- struct{}{}
-		defer wg.Done()
-		defer func() { <-app.sem }()
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Printf(fmt.Errorf("%s", err).Error())
-			}
-		}()
-		fn()
-	}()
+func (app *application) semRelease() {
+	<-app.sem
 }
 
 func (app *application) downloadFile(url string, destination string) error {
