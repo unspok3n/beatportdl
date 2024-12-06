@@ -68,10 +68,7 @@ func (app *application) handleCoverFile(path string) error {
 			return err
 		}
 	} else {
-		err := os.Remove(path)
-		if err != nil {
-			return err
-		}
+		os.Remove(path)
 	}
 	return nil
 }
