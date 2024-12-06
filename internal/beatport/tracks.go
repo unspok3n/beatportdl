@@ -59,7 +59,7 @@ func (t *Track) ArtistsDisplay(aType ArtistType, limit int, shortForm string) st
 	return artistsString
 }
 
-func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string) string {
+func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string, keySystem string) string {
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
 
 	artistsString := t.ArtistsDisplay(ArtistTypeMain, aLimit, aShortForm)
@@ -72,7 +72,7 @@ func (t *Track) Filename(template string, whitespace string, aLimit int, aShortF
 		"artists":  artistsString,
 		"remixers": remixersString,
 		"number":   fmt.Sprintf("%02d", t.Number),
-		"key":      t.Key.Name,
+		"key":      t.Key.Display(keySystem),
 		"bpm":      strconv.Itoa(t.BPM),
 		"genre":    t.Genre.Name,
 		"isrc":     t.ISRC,

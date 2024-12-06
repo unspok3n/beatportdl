@@ -119,6 +119,7 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 		app.config.WhitespaceCharacter,
 		app.config.ArtistsLimit,
 		app.config.ArtistsShortForm,
+		app.config.KeySystem,
 	)
 	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
 
