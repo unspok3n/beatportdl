@@ -83,7 +83,7 @@ Building
 Required dependencies:
 * [TagLib](https://github.com/taglib/taglib) >= 2.0
 * [zlib](https://github.com/madler/zlib) >= 1.2.3
-* [Zig C/C++ Toolchain](https://github.com/ziglang/zig) >= 0.13.0
+* [Zig C/C++ Toolchain](https://github.com/ziglang/zig) >= 0.14.0-dev.2273
 
 BeatportDL uses [TagLib](https://taglib.org/) C bindings to handle audio metadata and therefore requires `CGO_ENABLED=1`
 
