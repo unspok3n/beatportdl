@@ -108,7 +108,7 @@ func ProgressBarOptions(prefix string) []mpb.BarOption {
 			decor.OnCompleteMeta(
 				decor.OnComplete(
 					decor.Meta(decor.Spinner([]string{"⣾ ", "⣽ ", "⣻ ", "⢿ ", "⡿ ", "⣟ ", "⣯ ", "⣷ "}), toMetaFunc(red)),
-					"✔ ",
+					"✓ ",
 				),
 				toMetaFunc(green),
 			),
