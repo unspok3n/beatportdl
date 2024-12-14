@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/fatih/color"
+	"github.com/vbauerster/mpb/v8"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -16,12 +19,14 @@ const (
 )
 
 type application struct {
-	config *config.AppConfig
-	log    *os.File
-	bp     *beatport.Beatport
-	wg     sync.WaitGroup
-	sem    chan struct{}
-	urls   []string
+	config    *config.AppConfig
+	logFile   *os.File
+	logWriter io.Writer
+	bp        *beatport.Beatport
+	wg        sync.WaitGroup
+	sem       chan struct{}
+	pbp       *mpb.Progress
+	urls      []string
 }
 
 func main() {
@@ -32,8 +37,9 @@ func main() {
 	}
 
 	app := &application{
-		config: cfg,
-		sem:    make(chan struct{}, cfg.MaxDownloadWorkers),
+		config:    cfg,
+		sem:       make(chan struct{}, cfg.MaxDownloadWorkers),
+		logWriter: os.Stdout,
 	}
 
 	if cfg.WriteErrorLog {
@@ -46,7 +52,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		app.log = f
+		app.logFile = f
 		defer f.Close()
 	}
 
@@ -81,6 +87,9 @@ func main() {
 			app.mainPrompt()
 		}
 
+		app.pbp = mpb.New(mpb.WithAutoRefresh(), mpb.WithOutput(color.Output))
+		app.logWriter = app.pbp
+
 		for _, url := range app.urls {
 			app.background(func() {
 				app.handleUrl(url)
@@ -88,6 +97,8 @@ func main() {
 		}
 
 		app.wg.Wait()
+		app.pbp.Shutdown()
+
 		app.urls = []string{}
 	}
 }

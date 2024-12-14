@@ -3,10 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/fatih/color"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -49,7 +53,7 @@ func (app *application) semRelease() {
 	<-app.sem
 }
 
-func (app *application) downloadFile(url string, destination string) error {
+func (app *application) downloadFile(url string, destination string, pbPrefix string) error {
 	out, err := os.Create(destination)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
@@ -66,12 +70,59 @@ func (app *application) downloadFile(url string, destination string) error {
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return err
+	if pbPrefix != "" {
+		contentLength, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
+		bar := app.pbp.AddBar(int64(contentLength), ProgressBarOptions(pbPrefix)...)
+
+		proxyReader := bar.ProxyReader(resp.Body)
+		defer proxyReader.Close()
+
+		_, err = io.Copy(out, proxyReader)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = io.Copy(out, resp.Body)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func toMetaFunc(c *color.Color) func(string) string {
+	return func(s string) string {
+		return c.Sprint(s)
+	}
+}
+
+func ProgressBarOptions(prefix string) []mpb.BarOption {
+	red, green, blue := color.New(color.FgRed), color.New(color.FgGreen), color.New(color.FgBlue)
+
+	options := []mpb.BarOption{
+		mpb.BarFillerClearOnComplete(),
+		mpb.PrependDecorators(
+			decor.OnCompleteMeta(
+				decor.OnComplete(
+					decor.Meta(decor.Spinner([]string{"⣾ ", "⣽ ", "⣻ ", "⢿ ", "⡿ ", "⣟ ", "⣯ ", "⣷ "}), toMetaFunc(red)),
+					"✔ ",
+				),
+				toMetaFunc(green),
+			),
+			decor.Name(prefix, decor.WCSyncSpaceR),
+		),
+		mpb.AppendDecorators(
+			decor.OnComplete(decor.Meta(decor.Percentage(decor.WCSyncSpace), toMetaFunc(blue)), ""),
+			decor.OnComplete(decor.Name(" |"), ""),
+			decor.OnComplete(decor.Meta(
+				decor.EwmaSpeed(decor.SizeB1000(0), "% .2f", 30, decor.WCSyncSpace), toMetaFunc(blue),
+			), ""),
+			decor.OnComplete(decor.Name(" | "), ""),
+			decor.OnComplete(decor.Meta(decor.EwmaETA(decor.ET_STYLE_MMSS, 0, decor.WCSyncWidth), toMetaFunc(blue)), ""),
+		),
+	}
+	return options
 }
 
 func GetLine() string {
@@ -94,9 +145,10 @@ func Pause() {
 
 func (app *application) LogError(caller string, err error) {
 	message := fmt.Sprintf("%s: %s\n", caller, err.Error())
-	fmt.Print(message)
-	if app.log != nil {
-		app.log.WriteString(message)
+	fmt.Fprint(app.logWriter, message)
+
+	if app.logFile != nil {
+		app.logFile.WriteString(message)
 	}
 }
 

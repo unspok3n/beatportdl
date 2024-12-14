@@ -1,32 +1,37 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"unspok3n/beatportdl/internal/beatport"
-
 	"gopkg.in/yaml.v2"
+	"os"
+	"os/exec"
 )
 
 type AppConfig struct {
-	Username                 string `yaml:"username,omitempty"`
-	Password                 string `yaml:"password,omitempty"`
-	DownloadsDirectory       string `yaml:"downloads_directory,omitempty"`
-	Quality                  string `yaml:"quality,omitempty"`
-	SortByContext            bool   `yaml:"sort_by_context,omitempty"`
-	CreateLabelDirectory     bool   `yaml:"create_label_directory,omitempty"`
-	CoverSize                string `yaml:"cover_size,omitempty"`
-	KeepCover                bool   `yaml:"keep_cover,omitempty"`
-	FixTags                  bool   `yaml:"fix_tags,omitempty"`
-	WriteErrorLog            bool   `yaml:"write_error_log,omitempty"`
-	MaxDownloadWorkers       int    `yaml:"max_download_workers,omitempty"`
-	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
+	Username           string `yaml:"username,omitempty"`
+	Password           string `yaml:"password,omitempty"`
+	Quality            string `yaml:"quality,omitempty"`
+	WriteErrorLog      bool   `yaml:"write_error_log,omitempty"`
+	MaxDownloadWorkers int    `yaml:"max_download_workers,omitempty"`
+	ShowProgress       bool   `yaml:"show_progress,omitempty"`
+
+	DownloadsDirectory   string `yaml:"downloads_directory,omitempty"`
+	SortByContext        bool   `yaml:"sort_by_context,omitempty"`
+	CreateLabelDirectory bool   `yaml:"create_label_directory,omitempty"`
+
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
+	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
+	WhitespaceCharacter      string `yaml:"whitespace_character,omitempty"`
 	ArtistsLimit             int    `yaml:"artists_limit,omitempty"`
 	ArtistsShortForm         string `yaml:"artists_short_form,omitempty"`
 	KeySystem                string `yaml:"key_system,omitempty"`
-	WhitespaceCharacter      string `yaml:"whitespace_character,omitempty"`
-	Proxy                    string `yaml:"proxy,omitempty"`
+
+	CoverSize string `yaml:"cover_size,omitempty"`
+	KeepCover bool   `yaml:"keep_cover,omitempty"`
+	FixTags   bool   `yaml:"fix_tags,omitempty"`
+
+	Proxy string `yaml:"proxy,omitempty"`
 }
 
 const (
@@ -50,6 +55,11 @@ func PermittedValue[T comparable](value T, permittedValues ...T) bool {
 	return false
 }
 
+func FFMPEGInstalled() bool {
+	_, err := exec.LookPath("ffmpeg")
+	return err == nil
+}
+
 func Parse(filePath string) (*AppConfig, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -64,6 +74,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		ArtistsShortForm:         "VA",
 		KeySystem:                "openkey-short",
 		FixTags:                  true,
+		ShowProgress:             true,
 		MaxDownloadWorkers:       15,
 	}
 	decoder := yaml.NewDecoder(file)
@@ -75,8 +86,8 @@ func Parse(filePath string) (*AppConfig, error) {
 		return nil, fmt.Errorf("username or password is not provided")
 	}
 
-	if config.Quality == "medium-hls" && !beatport.FFMPEGInstalled() {
-		return nil, beatport.ErrFfmpegNotFound
+	if config.Quality == "medium-hls" && !FFMPEGInstalled() {
+		return nil, errors.New("ffmpeg not found")
 	}
 
 	if !PermittedValue(config.KeySystem, SupportedKeySystems...) {
