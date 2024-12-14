@@ -19,14 +19,15 @@ const (
 )
 
 type application struct {
-	config    *config.AppConfig
-	logFile   *os.File
-	logWriter io.Writer
-	bp        *beatport.Beatport
-	wg        sync.WaitGroup
-	sem       chan struct{}
-	pbp       *mpb.Progress
-	urls      []string
+	config      *config.AppConfig
+	logFile     *os.File
+	logWriter   io.Writer
+	bp          *beatport.Beatport
+	wg          sync.WaitGroup
+	downloadSem chan struct{}
+	globalSem   chan struct{}
+	pbp         *mpb.Progress
+	urls        []string
 }
 
 func main() {
@@ -37,9 +38,10 @@ func main() {
 	}
 
 	app := &application{
-		config:    cfg,
-		sem:       make(chan struct{}, cfg.MaxDownloadWorkers),
-		logWriter: os.Stdout,
+		config:      cfg,
+		downloadSem: make(chan struct{}, cfg.MaxDownloadWorkers),
+		globalSem:   make(chan struct{}, cfg.MaxGlobalWorkers),
+		logWriter:   os.Stdout,
 	}
 
 	if cfg.WriteErrorLog {

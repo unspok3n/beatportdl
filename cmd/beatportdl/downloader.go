@@ -364,14 +364,14 @@ func (app *application) handleReleaseLink(url string, link beatport.Link) {
 
 	var cover string
 	if app.requireCover(true, true) {
-		app.semAcquire()
+		app.semAcquire(app.downloadSem)
 		cover, err = app.downloadCover(release.Image, downloadsDir)
 		if err != nil {
-			app.semRelease()
+			app.semRelease(app.downloadSem)
 			app.logWrapper(url, "download track release cover", err)
 			return
 		}
-		app.semRelease()
+		app.semRelease(app.downloadSem)
 	}
 
 	wg := sync.WaitGroup{}
@@ -553,14 +553,14 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 
 			var cover string
 			if app.requireCover(true, true) {
-				app.semAcquire()
+				app.semAcquire(app.downloadSem)
 				cover, err = app.downloadCover(release.Image, releaseDir)
 				if err != nil {
-					app.semRelease()
+					app.semRelease(app.downloadSem)
 					app.logWrapper(url, "download release cover", err)
 					return
 				}
-				app.semRelease()
+				app.semRelease(app.downloadSem)
 			}
 
 			wg := sync.WaitGroup{}

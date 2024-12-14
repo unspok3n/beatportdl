@@ -19,7 +19,9 @@ func (app *application) background(fn func()) {
 	app.wg.Add(1)
 
 	go func() {
+		app.semAcquire(app.globalSem)
 		defer app.wg.Done()
+		defer app.semRelease(app.globalSem)
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf(fmt.Errorf("%s", err).Error())
@@ -33,9 +35,9 @@ func (app *application) downloadWorker(wg *sync.WaitGroup, fn func()) {
 	wg.Add(1)
 
 	go func() {
-		app.semAcquire()
+		app.semAcquire(app.downloadSem)
 		defer wg.Done()
-		defer app.semRelease()
+		defer app.semRelease(app.downloadSem)
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Printf(fmt.Errorf("%s", err).Error())
@@ -45,12 +47,12 @@ func (app *application) downloadWorker(wg *sync.WaitGroup, fn func()) {
 	}()
 }
 
-func (app *application) semAcquire() {
-	app.sem <- struct{}{}
+func (app *application) semAcquire(s chan struct{}) {
+	s <- struct{}{}
 }
 
-func (app *application) semRelease() {
-	<-app.sem
+func (app *application) semRelease(s chan struct{}) {
+	<-s
 }
 
 func (app *application) downloadFile(url string, destination string, pbPrefix string) error {

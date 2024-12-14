@@ -9,12 +9,14 @@ import (
 )
 
 type AppConfig struct {
-	Username           string `yaml:"username,omitempty"`
-	Password           string `yaml:"password,omitempty"`
-	Quality            string `yaml:"quality,omitempty"`
-	WriteErrorLog      bool   `yaml:"write_error_log,omitempty"`
-	MaxDownloadWorkers int    `yaml:"max_download_workers,omitempty"`
-	ShowProgress       bool   `yaml:"show_progress,omitempty"`
+	Username      string `yaml:"username,omitempty"`
+	Password      string `yaml:"password,omitempty"`
+	Quality       string `yaml:"quality,omitempty"`
+	WriteErrorLog bool   `yaml:"write_error_log,omitempty"`
+	ShowProgress  bool   `yaml:"show_progress,omitempty"`
+
+	MaxGlobalWorkers   int `yaml:"max_global_workers,omitempty"`
+	MaxDownloadWorkers int `yaml:"max_download_workers,omitempty"`
 
 	DownloadsDirectory   string `yaml:"downloads_directory,omitempty"`
 	SortByContext        bool   `yaml:"sort_by_context,omitempty"`
@@ -75,6 +77,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		KeySystem:                "openkey-short",
 		FixTags:                  true,
 		ShowProgress:             true,
+		MaxGlobalWorkers:         15,
 		MaxDownloadWorkers:       15,
 	}
 	decoder := yaml.NewDecoder(file)
