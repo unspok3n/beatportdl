@@ -132,7 +132,7 @@ func (file *File) GetPicture() (*Picture, error) {
 	}, nil
 }
 
-func (f *File) SetPicture(picture *Picture) error {
+func (file *File) SetPicture(picture *Picture) error {
 	dataC := C.CBytes(picture.Data)
 	defer C.free(dataC)
 	descC := C.CString(picture.Description)
@@ -142,7 +142,7 @@ func (f *File) SetPicture(picture *Picture) error {
 	typeC := C.CString(picture.PictureType)
 	defer C.free(unsafe.Pointer(typeC))
 
-	C.taglib_set_picture(f.fp, (*C.char)(dataC), C.uint(picture.Size), descC, mimeC, typeC)
+	C.taglib_set_picture(file.fp, (*C.char)(dataC), C.uint(picture.Size), descC, mimeC, typeC)
 	return nil
 }
 
