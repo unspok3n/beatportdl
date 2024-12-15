@@ -1,0 +1,47 @@
+name: Bug
+description: Something isn't working as expected
+title: "[BUG] <title>"
+labels: ['bug']
+body:
+  - type: textarea
+    attributes:
+      label: Description
+      description: |
+        Briefly describe the problem you are having.
+
+        Include both the current behavior (what you are seeing) as well as what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps To Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Use config option X
+        2. Download Y
+        3. See error
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: OS
+      description: |
+        Operating system and architecture on which the issue was encountered
+      placeholder: "Windows 11 Pro 64-bit, macOS 15.0.1 M3 Max, Ubuntu 24.04.1 LTS 64-bit"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Version
+      description: |
+        Release version or commit hash
+      placeholder: "1.0.5"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Anything else?
+      description: |
+        Links? References? Anything that will give us more context about the issue you are encountering!
+    validations:
+      required: false

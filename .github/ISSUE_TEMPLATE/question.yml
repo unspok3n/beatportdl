@@ -1,0 +1,11 @@
+name: Question
+description: General inquiry
+title: "[QUESTION] <title>"
+labels: ['question']
+body:
+  - type: textarea
+    id: text
+    attributes:
+      label: Question
+    validations:
+      required: true
