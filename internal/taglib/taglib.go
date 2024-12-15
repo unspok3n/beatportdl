@@ -3,7 +3,7 @@ package taglib
 /*
 	#cgo LDFLAGS: -ltag -lz -ltag_c
 	#include <stdlib.h>
-	#include <tag_c.h>
+	#include <taglib/tag_c.h>
 
 	void taglib_set_picture(TagLib_File *file, const char *data, unsigned int size, const char *desc, const char *mime, const char *typ) {
 		TAGLIB_COMPLEX_PROPERTY_PICTURE(props, data, size, desc, mime, typ);

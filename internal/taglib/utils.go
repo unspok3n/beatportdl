@@ -1,7 +1,7 @@
 package taglib
 
 // #include <stdlib.h>
-// #include <tag_c.h>
+// #include <taglib/tag_c.h>
 import "C"
 import "unsafe"
 
