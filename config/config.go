@@ -18,9 +18,9 @@ type AppConfig struct {
 	MaxGlobalWorkers   int `yaml:"max_global_workers,omitempty"`
 	MaxDownloadWorkers int `yaml:"max_download_workers,omitempty"`
 
-	DownloadsDirectory   string `yaml:"downloads_directory,omitempty"`
-	SortByContext        bool   `yaml:"sort_by_context,omitempty"`
-	CreateLabelDirectory bool   `yaml:"create_label_directory,omitempty"`
+	DownloadsDirectory string `yaml:"downloads_directory,omitempty"`
+	SortByContext      bool   `yaml:"sort_by_context,omitempty"`
+	SortByLabel        bool   `yaml:"sort_by_label,omitempty"`
 
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`

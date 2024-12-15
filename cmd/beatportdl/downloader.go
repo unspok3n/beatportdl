@@ -31,7 +31,7 @@ func (app *application) setupBasicDownloadsDirectory(baseDir string, release *be
 			app.config.ArtistsLimit,
 			app.config.ArtistsShortForm,
 		)
-		if app.config.CreateLabelDirectory && release != nil {
+		if app.config.SortByLabel && release != nil {
 			dir = filepath.Join(dir, release.Label.NameSanitized())
 		}
 		dir = filepath.Join(dir, subDir)
