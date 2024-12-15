@@ -11,32 +11,14 @@ import (
 type Release struct {
 	ID            int64           `json:"id"`
 	Name          SanitizedString `json:"name"`
-	Artists       []Artist        `json:"artists"`
-	Remixers      []Artist        `json:"remixers"`
+	Artists       Artists         `json:"artists"`
+	Remixers      Artists         `json:"remixers"`
 	CatalogNumber SanitizedString `json:"catalog_number"`
 	Label         Label           `json:"label"`
 	Date          string          `json:"new_release_date"`
 	Image         Image           `json:"image"`
 	TrackUrls     []string        `json:"tracks"`
 	URL           string          `json:"url"`
-}
-
-func (r *Release) ArtistsDisplay(aType ArtistType, limit int, shortForm string) string {
-	var artistNames []string
-	var artists []Artist
-	if aType != ArtistTypeMain {
-		artists = r.Remixers
-	} else {
-		artists = r.Artists
-	}
-	if shortForm != "" && len(artists) > limit {
-		return shortForm
-	}
-	for _, artist := range artists {
-		artistNames = append(artistNames, artist.Name)
-	}
-	artistsString := strings.Join(artistNames, ", ")
-	return artistsString
 }
 
 func (b *Beatport) GetRelease(id int64) (*Release, error) {
@@ -78,8 +60,8 @@ func (b *Beatport) GetReleaseTracks(id int64, page int) (*Paginated[Track], erro
 func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
 
-	artistsString := r.ArtistsDisplay(ArtistTypeMain, aLimit, aShortForm)
-	remixersString := r.ArtistsDisplay(ArtistTypeRemixers, aLimit, aShortForm)
+	artistsString := r.Artists.Display(aLimit, aShortForm)
+	remixersString := r.Remixers.Display(aLimit, aShortForm)
 
 	var year string
 	dateParsed, err := time.Parse("2006-01-02", r.Date)

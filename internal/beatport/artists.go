@@ -11,12 +11,26 @@ type Artist struct {
 	Name string `json:"name"`
 }
 
+type Artists []Artist
+
 func (a Artist) NameSanitized() string {
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
 	for _, char := range charsToRemove {
 		a.Name = strings.Replace(a.Name, char, "", -1)
 	}
 	return a.Name
+}
+
+func (a Artists) Display(limit int, shortForm string) string {
+	var artistNames []string
+	if shortForm != "" && len(a) > limit {
+		return shortForm
+	}
+	for _, artist := range a {
+		artistNames = append(artistNames, artist.Name)
+	}
+	artistsString := strings.Join(artistNames, ", ")
+	return artistsString
 }
 
 func (b *Beatport) GetArtist(id int64) (*Artist, error) {

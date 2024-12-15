@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"unspok3n/beatportdl/config"
-	"unspok3n/beatportdl/internal/beatport"
 )
 
 func Setup() (cfg *config.AppConfig, cachePath string, err error) {
@@ -112,8 +111,7 @@ func (app *application) search(input string) {
 	for i, track := range results.Tracks {
 		fmt.Printf(
 			"%2d. %s - %s (%s) [%s]\n", i+1,
-			track.ArtistsDisplay(
-				beatport.ArtistTypeMain,
+			track.Artists.Display(
 				app.config.ArtistsLimit,
 				app.config.ArtistsShortForm,
 			),
@@ -127,8 +125,7 @@ func (app *application) search(input string) {
 	for i, release := range results.Releases {
 		fmt.Printf(
 			"%2d. %s - %s [%s]\n", i+indexOffset,
-			release.ArtistsDisplay(
-				beatport.ArtistTypeMain,
+			release.Artists.Display(
 				app.config.ArtistsLimit,
 				app.config.ArtistsShortForm,
 			),

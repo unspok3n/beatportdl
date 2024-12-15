@@ -19,8 +19,8 @@ type Track struct {
 	ISRC        string          `json:"isrc"`
 	Length      string          `json:"length"`
 	LengthMs    int             `json:"length_ms"`
-	Artists     []Artist        `json:"artists"`
-	Remixers    []Artist        `json:"remixers"`
+	Artists     Artists         `json:"artists"`
+	Remixers    Artists         `json:"remixers"`
 	PublishDate string          `json:"publish_date"`
 	Release     Release         `json:"release"`
 	URL         string          `json:"url"`
@@ -41,29 +41,11 @@ type TrackNeedledrop struct {
 	SampleEndMs   int    `json:"sample_end_ms"`
 }
 
-func (t *Track) ArtistsDisplay(aType ArtistType, limit int, shortForm string) string {
-	var artistNames []string
-	var artists []Artist
-	if aType != ArtistTypeMain {
-		artists = t.Remixers
-	} else {
-		artists = t.Artists
-	}
-	if shortForm != "" && len(artists) > limit {
-		return shortForm
-	}
-	for _, artist := range artists {
-		artistNames = append(artistNames, artist.Name)
-	}
-	artistsString := strings.Join(artistNames, ", ")
-	return artistsString
-}
-
 func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string, keySystem string) string {
 	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
 
-	artistsString := t.ArtistsDisplay(ArtistTypeMain, aLimit, aShortForm)
-	remixersString := t.ArtistsDisplay(ArtistTypeRemixers, aLimit, aShortForm)
+	artistsString := t.Artists.Display(aLimit, aShortForm)
+	remixersString := t.Remixers.Display(aLimit, aShortForm)
 
 	templateValues := map[string]string{
 		"id":       strconv.Itoa(int(t.ID)),

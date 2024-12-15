@@ -192,10 +192,9 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
 		file.SetProperty("DATE", track.Release.Date)
 		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
-		file.SetProperty("ALBUMARTIST", track.Release.ArtistsDisplay(
-			beatport.ArtistTypeMain,
-			app.config.ArtistsLimit,
-			app.config.ArtistsShortForm,
+		file.SetProperty("ALBUMARTIST", track.Release.Artists.Display(
+			0,
+			"",
 		))
 		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
 	}
@@ -204,15 +203,13 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()))
 		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
 		file.SetProperty("ALBUM", track.Release.Name.String())
-		file.SetProperty("ARTIST", track.ArtistsDisplay(
-			beatport.ArtistTypeMain,
-			app.config.ArtistsLimit,
-			app.config.ArtistsShortForm,
+		file.SetProperty("ARTIST", track.Artists.Display(
+			0,
+			"",
 		))
-		file.SetProperty("ALBUMARTIST", track.Release.ArtistsDisplay(
-			beatport.ArtistTypeMain,
-			app.config.ArtistsLimit,
-			app.config.ArtistsShortForm,
+		file.SetProperty("ALBUMARTIST", track.Release.Artists.Display(
+			0,
+			"",
 		))
 		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
 		file.SetProperty("DATE", track.PublishDate)
