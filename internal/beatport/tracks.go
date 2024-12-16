@@ -12,6 +12,7 @@ type Track struct {
 	ID          int64           `json:"id"`
 	Name        SanitizedString `json:"name"`
 	MixName     SanitizedString `json:"mix_name"`
+	Slug        string          `json:"slug"`
 	Number      int             `json:"number"`
 	Key         Key             `json:"key"`
 	BPM         int             `json:"bpm"`
@@ -39,6 +40,10 @@ type TrackNeedledrop struct {
 	Stream        string `json:"stream_url"`
 	SampleStartMs int    `json:"sample_start_ms"`
 	SampleEndMs   int    `json:"sample_end_ms"`
+}
+
+func (t *Track) StoreUrl() string {
+	return fmt.Sprintf("https://www.beatport.com/track/%s/%d", t.Slug, t.ID)
 }
 
 func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string, keySystem string) string {

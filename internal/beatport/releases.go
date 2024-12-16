@@ -11,6 +11,7 @@ import (
 type Release struct {
 	ID            int64           `json:"id"`
 	Name          SanitizedString `json:"name"`
+	Slug          string          `json:"slug"`
 	Artists       Artists         `json:"artists"`
 	Remixers      Artists         `json:"remixers"`
 	CatalogNumber SanitizedString `json:"catalog_number"`
@@ -19,6 +20,10 @@ type Release struct {
 	Image         Image           `json:"image"`
 	TrackUrls     []string        `json:"tracks"`
 	URL           string          `json:"url"`
+}
+
+func (r *Release) StoreUrl() string {
+	return fmt.Sprintf("https://www.beatport.com/release/%s/%d", r.Slug, r.ID)
 }
 
 func (b *Beatport) GetRelease(id int64) (*Release, error) {
