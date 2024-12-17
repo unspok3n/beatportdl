@@ -58,10 +58,17 @@ func (app *application) downloadCover(image beatport.Image, downloadsDir string)
 	coverUrl := image.FormattedUrl(app.config.CoverSize)
 	coverPath := filepath.Join(downloadsDir, uuid.New().String())
 	err := app.downloadFile(coverUrl, coverPath, "")
-	return coverPath, err
+	if err != nil {
+		os.Remove(coverPath)
+		return "", err
+	}
+	return coverPath, nil
 }
 
 func (app *application) handleCoverFile(path string) error {
+	if path == "" {
+		return nil
+	}
 	if app.config.KeepCover && app.config.SortByContext {
 		newPath := filepath.Dir(path) + "/cover.jpg"
 		if err := os.Rename(path, newPath); err != nil {
@@ -332,7 +339,6 @@ func (app *application) handleTrackLink(url string, link beatport.Link) {
 			cover, err = app.downloadCover(track.Release.Image, downloadsDir)
 			if err != nil {
 				app.logWrapper(url, "download track release cover", err)
-				return
 			}
 		}
 
@@ -367,9 +373,7 @@ func (app *application) handleReleaseLink(url string, link beatport.Link) {
 		app.semAcquire(app.downloadSem)
 		cover, err = app.downloadCover(release.Image, downloadsDir)
 		if err != nil {
-			app.semRelease(app.downloadSem)
 			app.logWrapper(url, "download release cover", err)
-			return
 		}
 		app.semRelease(app.downloadSem)
 	}
@@ -434,9 +438,9 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 				cover, err = app.downloadCover(item.Track.Release.Image, downloadsDir)
 				if err != nil {
 					app.logWrapper(trackStoreUrl, "download track release cover", err)
-					return
+				} else {
+					defer os.Remove(cover)
 				}
-				defer os.Remove(cover)
 			}
 
 			if err := app.handleTrack(&item.Track, downloadsDir, cover); err != nil {
@@ -477,7 +481,6 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 			cover, err := app.downloadCover(chart.Image, downloadsDir)
 			if err != nil {
 				app.logWrapper(url, "download chart cover", err)
-				return
 			}
 			if err := app.handleCoverFile(cover); err != nil {
 				app.logWrapper(url, "handle cover file", err)
@@ -503,9 +506,9 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 				cover, err = app.downloadCover(track.Release.Image, downloadsDir)
 				if err != nil {
 					app.logWrapper(trackStoreUrl, "download track release cover", err)
-					return
+				} else {
+					defer os.Remove(cover)
 				}
-				defer os.Remove(cover)
 			}
 
 			if err := app.handleTrack(&track, downloadsDir, cover); err != nil {
@@ -557,9 +560,7 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 				app.semAcquire(app.downloadSem)
 				cover, err = app.downloadCover(release.Image, releaseDir)
 				if err != nil {
-					app.semRelease(app.downloadSem)
 					app.logWrapper(releaseStoreUrl, "download release cover", err)
-					return
 				}
 				app.semRelease(app.downloadSem)
 			}
@@ -649,7 +650,6 @@ func (app *application) handleArtistLink(url string, link beatport.Link) {
 				cover, err = app.downloadCover(release.Image, releaseDir)
 				if err != nil {
 					app.logWrapper(trackStoreUrl, "download track release cover", err)
-					return
 				}
 			}
 
