@@ -33,6 +33,8 @@ type AppConfig struct {
 	KeepCover bool   `yaml:"keep_cover,omitempty"`
 	FixTags   bool   `yaml:"fix_tags,omitempty"`
 
+	TagMappings map[string]map[string]string `yaml:"tag_mappings,omitempty"`
+
 	Proxy string `yaml:"proxy,omitempty"`
 }
 
@@ -47,7 +49,76 @@ var (
 		"openkey",
 		"camelot",
 	}
+
+	SupportedTagMappingFormats = []string{
+		"flac",
+		"m4a",
+	}
+
+	SupportedTagMappingFields = []string{
+		"track_name",
+		"track_artists",
+		"track_number",
+		"track_genre",
+		"track_key",
+		"track_bpm",
+		"track_isrc",
+
+		"release_name",
+		"release_artists",
+		"release_date",
+		"release_catalog_number",
+		"release_label",
+	}
+
+	DefaultTagMappings = map[string]map[string]string{
+		"flac": {
+			"track_name":    "TITLE",
+			"track_artists": "ARTIST",
+			"track_number":  "TRACKNUMBER",
+			"track_genre":   "GENRE",
+			"track_key":     "KEY",
+			"track_bpm":     "BPM",
+			"track_isrc":    "ISRC",
+
+			"release_name":           "ALBUM",
+			"release_artists":        "ALBUMARTIST",
+			"release_date":           "DATE",
+			"release_catalog_number": "CATALOGNUMBER",
+			"release_label":          "LABEL",
+		},
+		"m4a": {
+			"track_name":    "TITLE",
+			"track_artists": "ARTIST",
+			"track_number":  "TRACKNUMBER",
+			"track_genre":   "GENRE",
+			"track_key":     "KEY",
+			"track_bpm":     "BPM",
+			"track_isrc":    "ISRC",
+
+			"release_name":           "ALBUM",
+			"release_artists":        "ALBUMARTIST",
+			"release_date":           "DATE",
+			"release_catalog_number": "CATALOGNUMBER",
+			"release_label":          "LABEL",
+		},
+	}
 )
+
+func ValidateTagMappings(m map[string]map[string]string) error {
+	for format, mappings := range m {
+		if !PermittedValue(format, SupportedTagMappingFormats...) {
+			return fmt.Errorf("invalid tag mapping format '%s'", format)
+		}
+
+		for field := range mappings {
+			if !PermittedValue(field, SupportedTagMappingFields...) {
+				return fmt.Errorf("invalid tag mapping field '%s'", field)
+			}
+		}
+	}
+	return nil
+}
 
 func PermittedValue[T comparable](value T, permittedValues ...T) bool {
 	for i := range permittedValues {
@@ -92,6 +163,22 @@ func Parse(filePath string) (*AppConfig, error) {
 
 	if config.Quality == "medium-hls" && !FFMPEGInstalled() {
 		return nil, errors.New("ffmpeg not found")
+	}
+
+	if config.TagMappings != nil {
+		if err = ValidateTagMappings(config.TagMappings); err != nil {
+			return nil, err
+		}
+
+		if _, ok := config.TagMappings["flac"]; !ok {
+			config.TagMappings["flac"] = DefaultTagMappings["flac"]
+		}
+
+		if _, ok := config.TagMappings["m4a"]; !ok {
+			config.TagMappings["m4a"] = DefaultTagMappings["m4a"]
+		}
+	} else {
+		config.TagMappings = DefaultTagMappings
 	}
 
 	if !PermittedValue(config.KeySystem, SupportedKeySystems...) {

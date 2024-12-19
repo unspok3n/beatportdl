@@ -162,11 +162,21 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 
 var (
 	beatportTags = []string{
+		"ALBUM",
+		"ARTIST",
+		"BPM",
+		"GENRE",
+		"ISRC",
+		"TITLE",
+		"TRACK",
+		"DATE",
+
 		"COMMENT",
 		"ENCODED_BY",
 		"ENCODER",
 		"FILEOWNER",
 		"FILETYPE",
+		"LABEL",
 		"LABEL_URL",
 		"INITIAL_KEY",
 		"ORGANIZATION",
@@ -189,42 +199,40 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	}
 	defer file.Close()
 
-	if fileExt == ".flac" {
-		for _, tag := range beatportTags {
-			file.SetProperty(tag, "")
-		}
-		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()))
-		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
-		file.SetProperty("ALBUM", track.Release.Name.String())
-		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
-		file.SetProperty("DATE", track.Release.Date)
-		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
-		file.SetProperty("ALBUMARTIST", track.Release.Artists.Display(
+	mappingValues := map[string]string{
+		"track_name": fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()),
+		"track_artists": track.Artists.Display(
 			0,
 			"",
-		))
-		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
+		),
+		"track_number": fmt.Sprintf("%d", track.Number),
+		"track_genre":  fmt.Sprintf("%s", track.Genre.Name),
+		"track_key":    track.Key.Display(app.config.KeySystem),
+		"track_bpm":    strconv.Itoa(track.BPM),
+		"track_isrc":   track.ISRC,
+
+		"release_name": track.Release.Name.String(),
+		"release_artists": track.Release.Artists.Display(
+			0,
+			"",
+		),
+		"release_date":           track.Release.Date,
+		"release_catalog_number": track.Release.CatalogNumber.String(),
+		"release_label":          track.Release.Label.Name,
 	}
 
-	if fileExt == ".m4a" {
-		file.SetProperty("TITLE", fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()))
-		file.SetProperty("TRACKNUMBER", strconv.Itoa(track.Number))
-		file.SetProperty("ALBUM", track.Release.Name.String())
-		file.SetProperty("ARTIST", track.Artists.Display(
-			0,
-			"",
-		))
-		file.SetProperty("ALBUMARTIST", track.Release.Artists.Display(
-			0,
-			"",
-		))
-		file.SetProperty("CATALOGNUMBER", track.Release.CatalogNumber.String())
-		file.SetProperty("DATE", track.PublishDate)
-		file.SetProperty("BPM", strconv.Itoa(track.BPM))
-		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
-		file.SetProperty("ISRC", track.ISRC)
-		file.SetProperty("LABEL", track.Release.Label.Name)
-		file.SetProperty("GENRE", track.Genre.Name)
+	for _, tag := range beatportTags {
+		file.SetProperty(tag, "")
+	}
+
+	if fileExt == ".flac" {
+		for field, property := range app.config.TagMappings["flac"] {
+			file.SetProperty(property, mappingValues[field])
+		}
+	} else if fileExt == ".m4a" {
+		for field, property := range app.config.TagMappings["m4a"] {
+			file.SetProperty(property, mappingValues[field])
+		}
 	}
 
 	if coverPath != "" && (app.config.CoverSize != config.DefaultCoverSize || fileExt == ".m4a") {
