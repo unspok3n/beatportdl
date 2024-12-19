@@ -9,6 +9,11 @@ import (
 type Label struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+func (l Label) StoreUrl() string {
+	return fmt.Sprintf("https://www.beatport.com/label/%s/%d", l.Slug, l.ID)
 }
 
 func (l Label) NameSanitized() string {

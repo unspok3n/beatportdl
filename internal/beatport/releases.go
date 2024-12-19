@@ -15,6 +15,7 @@ type Release struct {
 	Artists       Artists         `json:"artists"`
 	Remixers      Artists         `json:"remixers"`
 	CatalogNumber SanitizedString `json:"catalog_number"`
+	UPC           string          `json:"upc"`
 	Label         Label           `json:"label"`
 	Date          string          `json:"new_release_date"`
 	Image         Image           `json:"image"`
@@ -62,17 +63,20 @@ func (b *Beatport) GetReleaseTracks(id int64, page int) (*Paginated[Track], erro
 	return &response, nil
 }
 
-func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
-
-	artistsString := r.Artists.Display(aLimit, aShortForm)
-	remixersString := r.Remixers.Display(aLimit, aShortForm)
-
+func (r *Release) Year() string {
 	var year string
 	dateParsed, err := time.Parse("2006-01-02", r.Date)
 	if err == nil {
 		year = dateParsed.Format("2006")
 	}
+	return year
+}
+
+func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
+
+	artistsString := r.Artists.Display(aLimit, aShortForm)
+	remixersString := r.Remixers.Display(aLimit, aShortForm)
 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
@@ -80,7 +84,7 @@ func (r *Release) DirectoryName(template string, whitespace string, aLimit int, 
 		"artists":        artistsString,
 		"remixers":       remixersString,
 		"date":           r.Date,
-		"year":           year,
+		"year":           r.Year(),
 		"catalog_number": r.CatalogNumber.String(),
 	}
 	directoryName := ParseTemplate(template, templateValues)

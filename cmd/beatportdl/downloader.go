@@ -200,6 +200,8 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	defer file.Close()
 
 	mappingValues := map[string]string{
+		"track_id":   strconv.Itoa(int(track.ID)),
+		"track_url":  track.StoreUrl(),
 		"track_name": fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()),
 		"track_artists": track.Artists.Display(
 			0,
@@ -211,13 +213,17 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"track_bpm":    strconv.Itoa(track.BPM),
 		"track_isrc":   track.ISRC,
 
+		"release_id":   strconv.Itoa(int(track.Release.ID)),
+		"release_url":  track.Release.StoreUrl(),
 		"release_name": track.Release.Name.String(),
 		"release_artists": track.Release.Artists.Display(
 			0,
 			"",
 		),
 		"release_date":           track.Release.Date,
+		"release_year":           track.Release.Year(),
 		"release_catalog_number": track.Release.CatalogNumber.String(),
+		"release_upc":            track.Release.UPC,
 		"release_label":          track.Release.Label.Name,
 	}
 

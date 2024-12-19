@@ -56,6 +56,8 @@ var (
 	}
 
 	SupportedTagMappingFields = []string{
+		"track_id",
+		"track_url",
 		"track_name",
 		"track_artists",
 		"track_number",
@@ -64,10 +66,14 @@ var (
 		"track_bpm",
 		"track_isrc",
 
+		"release_id",
+		"release_url",
 		"release_name",
 		"release_artists",
 		"release_date",
+		"release_year",
 		"release_catalog_number",
+		"release_upc",
 		"release_label",
 	}
 
