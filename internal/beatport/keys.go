@@ -20,9 +20,9 @@ type ChordType struct {
 
 func (k *Key) Display(system string) string {
 	switch system {
-	case "openkey":
+	case "traditional":
 		return k.Name
-	case "openkey-short":
+	case "traditional-short":
 		var symbol string
 		if k.IsSharp {
 			symbol = "#"
@@ -34,6 +34,20 @@ func (k *Key) Display(system string) string {
 			chord = "m"
 		}
 		return k.Letter + symbol + chord
+	case "openkey":
+		var number int
+		if k.CamelotNumber > 7 {
+			number = k.CamelotNumber - 7
+		} else {
+			number = k.CamelotNumber + 5
+		}
+		var letter string
+		if k.ChordType.Name == "Minor" {
+			letter = "m"
+		} else if k.ChordType.Name == "Major" {
+			letter = "d"
+		}
+		return strconv.Itoa(number) + letter
 	case "camelot":
 		return strconv.Itoa(k.CamelotNumber) + k.CamelotLetter
 	default:

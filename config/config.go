@@ -42,8 +42,9 @@ const (
 
 var (
 	SupportedKeySystems = []string{
+		"traditional",
+		"traditional-short",
 		"openkey",
-		"openkey-short",
 		"camelot",
 	}
 )
@@ -74,7 +75,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		ReleaseDirectoryTemplate: "[{catalog_number}] {artists} - {name}",
 		ArtistsLimit:             3,
 		ArtistsShortForm:         "VA",
-		KeySystem:                "openkey-short",
+		KeySystem:                "traditional-short",
 		FixTags:                  true,
 		ShowProgress:             true,
 		MaxGlobalWorkers:         15,
