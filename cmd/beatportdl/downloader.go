@@ -224,6 +224,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		file.SetProperty("KEY", track.Key.Display(app.config.KeySystem))
 		file.SetProperty("ISRC", track.ISRC)
 		file.SetProperty("LABEL", track.Release.Label.Name)
+		file.SetProperty("GENRE", track.Genre.Name)
 	}
 
 	if coverPath != "" && (app.config.CoverSize != config.DefaultCoverSize || fileExt == ".m4a") {
