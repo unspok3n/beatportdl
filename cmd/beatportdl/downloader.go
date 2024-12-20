@@ -225,6 +225,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"release_catalog_number": track.Release.CatalogNumber.String(),
 		"release_upc":            track.Release.UPC,
 		"release_label":          track.Release.Label.Name,
+		"release_label_url":      track.Release.Label.StoreUrl(),
 	}
 
 	for _, tag := range beatportTags {

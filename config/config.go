@@ -75,6 +75,7 @@ var (
 		"release_catalog_number",
 		"release_upc",
 		"release_label",
+		"release_label_url",
 	}
 
 	DefaultTagMappings = map[string]map[string]string{
