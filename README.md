@@ -12,13 +12,15 @@ Setup
 
      *Compiled binaries for Windows, macOS (amd64, arm64) and Linux are available on the [Releases](https://github.com/unspok3n/beatportdl/releases) page.*
 
-2. Run beatportdl (e.g. `./beatportdl-darwin-arm64`), then specify the:
+   *For compiled binaries for macOS, the permissions will need to be set e.g chmod +x beatportdl-darwin-arm64*
+
+3. Run beatportdl (e.g. `./beatportdl-darwin-arm64`), then specify the:
    - Beatport username
    - Beatport password
    - Downloads directory
    - Audio quality
 
-3. OPTIONAL: Customize a config file. Create a new config file by running:
+4. OPTIONAL: Customize a config file. Create a new config file by running:
 ```shell
 ./beatportdl
 ```
@@ -40,8 +42,8 @@ This will create a new `beatportdl-config.yml` file. You can put the following o
 | `cover_size`                 | 1400x1400                                 | String  | Cover art size for `keep_cover` and track metadata (if `fix_tags` is enabled)  *[max: 1400x1400]*                                 |
 | `keep_cover`                 | false                                     | Boolean | Download cover art file (cover.jpg) to the context directory (requires `sort_by_context`)                                         |
 | `fix_tags`                   | true                                      | Boolean | Add missing metadata to M4A (AAC) files and remove useless tags from FLAC files (e.g., Purchased at Beatport.com)                 |
-| `track_file_template`        | {number}. {artists} - {name} ({mix_name}) | String  | Track filename template                                                                                                           |
-| `release_directory_template` | [{catalog_number}] {artists} - {name}     | String  | Release directory name template                                                                                                   |
+| `track_file_template`        | '{number}. {artists} - {name} ({mix_name})'| String  | Track filename template                                                                                                           |
+| `release_directory_template` | '[{catalog_number}] {artists} - {name}'    | String  | Release directory name template                                                                                                   |
 | `whitespace_character`       |                                           | String  | Whitespace character for track filenames and release directories                                                                  |
 | `artists_limit`              | 3                                         | Integer | Maximum number of artists allowed before replacing with `artists_short_form` (affects directories, filenames, and search results) |
 | `artists_short_form`         | VA                                        | String  | Custom string to represent "Various Artists"                                                                                      |
