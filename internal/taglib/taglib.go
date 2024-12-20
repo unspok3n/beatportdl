@@ -1,14 +1,10 @@
 package taglib
 
 /*
-	#cgo LDFLAGS: -ltag -lz -ltag_c
+	#cgo LDFLAGS: -ltag -ltag_c -lz
 	#include <stdlib.h>
 	#include <taglib/tag_c.h>
-
-	void taglib_set_picture(TagLib_File *file, const char *data, unsigned int size, const char *desc, const char *mime, const char *typ) {
-		TAGLIB_COMPLEX_PROPERTY_PICTURE(props, data, size, desc, mime, typ);
-		taglib_complex_property_set(file, "PICTURE", props);
-	}
+	#include "extensions.h"
 */
 import "C"
 
@@ -62,6 +58,14 @@ func (file *File) Save() error {
 		return ErrSave
 	}
 	return nil
+}
+
+func (f *File) SetItemMp4(key, value string) {
+	keyC := C.CString(key)
+	defer C.free(unsafe.Pointer(keyC))
+	valueC := C.CString(value)
+	defer C.free(unsafe.Pointer(valueC))
+	C.taglib_set_item_mp4(f.fp, keyC, valueC)
 }
 
 // Properties API

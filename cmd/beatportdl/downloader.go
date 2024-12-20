@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"unspok3n/beatportdl/config"
 	"unspok3n/beatportdl/internal/beatport"
@@ -179,6 +180,7 @@ var (
 		"LABEL",
 		"LABEL_URL",
 		"INITIAL_KEY",
+		"INITIALKEY",
 		"ORGANIZATION",
 		"RECORDING_DATE",
 		"RELEASE_TIME",
@@ -186,6 +188,10 @@ var (
 		"YEAR",
 		"IENG",
 	}
+)
+
+const (
+	rawTagSuffix = "_raw"
 )
 
 func (app *application) tagTrack(location string, track beatport.Track, coverPath string) error {
@@ -234,11 +240,24 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 
 	if fileExt == ".flac" {
 		for field, property := range app.config.TagMappings["flac"] {
-			file.SetProperty(property, mappingValues[field])
+			value := mappingValues[field]
+			file.SetProperty(property, &value)
 		}
 	} else if fileExt == ".m4a" {
+		rawTags := make(map[string]string)
+
 		for field, property := range app.config.TagMappings["m4a"] {
-			file.SetProperty(property, mappingValues[field])
+			if strings.HasSuffix(property, rawTagSuffix) {
+				property = strings.TrimSuffix(property, rawTagSuffix)
+				rawTags[property] = mappingValues[field]
+			} else {
+				value := mappingValues[field]
+				file.SetProperty(property, &value)
+			}
+		}
+
+		for tag, value := range rawTags {
+			file.SetItemMp4(tag, value)
 		}
 	}
 
