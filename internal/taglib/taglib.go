@@ -81,9 +81,12 @@ func (f *File) GetProperty(property string) string {
 func (f *File) SetProperty(property string, value *string) {
 	propertyC := getCCharPointer(property)
 	defer C.free(unsafe.Pointer(propertyC))
-	valueC := getCCharPointer(value)
-	defer C.free(unsafe.Pointer(valueC))
-	C.taglib_property_set(file.fp, propertyC, valueC)
+	var valueC *C.char
+	if value != nil {
+		valueC = getCCharPointer(*value)
+		defer C.free(unsafe.Pointer(valueC))
+	}
+	C.taglib_property_set(f.fp, propertyC, valueC)
 }
 
 func (f *File) PropertyKeys() ([]string, error) {
