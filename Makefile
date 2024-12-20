@@ -52,6 +52,6 @@ windows-amd64:
 	CGO_ENABLED=1 \
 	GOOS=windows \
 	GOARCH=amd64 \
-	CC="${ZIG_CC} -target x86_64-windows-gnu ${WINDOWS_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall" \
-	CXX="${ZIG_CXX} -target x86_64-windows-gnu ${WINDOWS_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall" \
+	CC="${ZIG_CC} -target x86_64-windows-gnu ${WINDOWS_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall -Wno-deprecated" \
+	CXX="${ZIG_CXX} -target x86_64-windows-gnu ${WINDOWS_AMD64_LIB_PATH} -DTAGLIB_STATIC -Wall -Wno-deprecated" \
 	${BUILD_CMD} -o=${BUILD_DIR}/beatportdl-windows-amd64.exe ${BUILD_SRC}

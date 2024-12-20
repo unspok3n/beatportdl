@@ -235,7 +235,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	}
 
 	for _, tag := range beatportTags {
-		file.SetProperty(tag, "")
+		file.SetProperty(tag, nil)
 	}
 
 	if fileExt == ".flac" {
