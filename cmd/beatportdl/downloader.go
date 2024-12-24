@@ -228,6 +228,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		),
 		"release_date":           track.Release.Date,
 		"release_year":           track.Release.Year(),
+		"release_track_count":    strconv.Itoa(track.Release.TrackCount),
 		"release_catalog_number": track.Release.CatalogNumber.String(),
 		"release_upc":            track.Release.UPC,
 		"release_label":          track.Release.Label.Name,

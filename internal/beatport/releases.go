@@ -20,6 +20,7 @@ type Release struct {
 	Date          string          `json:"new_release_date"`
 	Image         Image           `json:"image"`
 	TrackUrls     []string        `json:"tracks"`
+	TrackCount    int             `json:"track_count"`
 	URL           string          `json:"url"`
 }
 
