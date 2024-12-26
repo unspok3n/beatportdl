@@ -17,6 +17,7 @@ type Track struct {
 	Key         Key             `json:"key"`
 	BPM         int             `json:"bpm"`
 	Genre       Genre           `json:"genre"`
+	Subgenre    *Genre          `json:"sub_genre"`
 	ISRC        string          `json:"isrc"`
 	Length      string          `json:"length"`
 	LengthMs    int             `json:"length_ms"`

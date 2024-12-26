@@ -205,6 +205,14 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	}
 	defer file.Close()
 
+	subgenre := ""
+	genreWithSubgenre := track.Genre.Name
+	subgenreOrGenre := track.Genre.Name
+	if track.Subgenre != nil {
+		subgenre = track.Subgenre.Name
+		genreWithSubgenre = genreWithSubgenre + " | " + subgenre
+		subgenreOrGenre = subgenre
+	}
 	mappingValues := map[string]string{
 		"track_id":   strconv.Itoa(int(track.ID)),
 		"track_url":  track.StoreUrl(),
@@ -213,12 +221,15 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			0,
 			"",
 		),
-		"track_number":            fmt.Sprintf("%d", track.Number),
-		"track_number_with_total": fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
-		"track_genre":             fmt.Sprintf("%s", track.Genre.Name),
-		"track_key":               track.Key.Display(app.config.KeySystem),
-		"track_bpm":               strconv.Itoa(track.BPM),
-		"track_isrc":              track.ISRC,
+		"track_number":              strconv.Itoa(track.Number),
+		"track_number_with_total":   fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
+		"track_genre":               track.Genre.Name,
+		"track_subgenre":            subgenre,
+		"track_genre_with_subgenre": genreWithSubgenre,
+		"track_subgenre_or_genre":   subgenreOrGenre,
+		"track_key":                 track.Key.Display(app.config.KeySystem),
+		"track_bpm":                 strconv.Itoa(track.BPM),
+		"track_isrc":                track.ISRC,
 
 		"release_id":   strconv.Itoa(int(track.Release.ID)),
 		"release_url":  track.Release.StoreUrl(),
@@ -243,18 +254,24 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	if fileExt == ".flac" {
 		for field, property := range app.config.TagMappings["flac"] {
 			value := mappingValues[field]
-			file.SetProperty(property, &value)
+			if value != "" {
+				file.SetProperty(property, &value)
+			}
 		}
 	} else if fileExt == ".m4a" {
 		rawTags := make(map[string]string)
 
 		for field, property := range app.config.TagMappings["m4a"] {
 			if strings.HasSuffix(property, rawTagSuffix) {
-				property = strings.TrimSuffix(property, rawTagSuffix)
-				rawTags[property] = mappingValues[field]
+				if mappingValues[field] != "" {
+					property = strings.TrimSuffix(property, rawTagSuffix)
+					rawTags[property] = mappingValues[field]
+				}
 			} else {
 				value := mappingValues[field]
-				file.SetProperty(property, &value)
+				if value != "" {
+					file.SetProperty(property, &value)
+				}
 			}
 		}
 
