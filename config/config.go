@@ -61,6 +61,7 @@ var (
 		"track_name",
 		"track_artists",
 		"track_number",
+		"track_number_with_total",
 		"track_genre",
 		"track_key",
 		"track_bpm",
