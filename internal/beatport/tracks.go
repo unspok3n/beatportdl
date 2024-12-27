@@ -32,13 +32,13 @@ type Genre struct {
 	Name string `json:"name"`
 }
 
-type TrackStream struct {
+type TrackDownload struct {
 	Location      string `json:"location"`
 	StreamQuality string `json:"stream_quality"`
 }
 
-type TrackNeedledrop struct {
-	Stream        string `json:"stream_url"`
+type TrackStream struct {
+	Url           string `json:"stream_url"`
 	SampleStartMs int    `json:"sample_start_ms"`
 	SampleEndMs   int    `json:"sample_end_ms"`
 }
@@ -102,7 +102,7 @@ func (b *Beatport) GetTrack(id int64) (*Track, error) {
 	return response, nil
 }
 
-func (b *Beatport) DownloadTrack(id int64, quality string) (*TrackStream, error) {
+func (b *Beatport) DownloadTrack(id int64, quality string) (*TrackDownload, error) {
 	res, err := b.fetch(
 		"GET",
 		fmt.Sprintf(
@@ -117,14 +117,14 @@ func (b *Beatport) DownloadTrack(id int64, quality string) (*TrackStream, error)
 		return nil, err
 	}
 	defer res.Body.Close()
-	response := &TrackStream{}
+	response := &TrackDownload{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
 	return response, nil
 }
 
-func (b *Beatport) StreamTrack(id int64) (*TrackNeedledrop, error) {
+func (b *Beatport) StreamTrack(id int64) (*TrackStream, error) {
 	res, err := b.fetch(
 		"GET",
 		fmt.Sprintf(
@@ -138,7 +138,7 @@ func (b *Beatport) StreamTrack(id int64) (*TrackNeedledrop, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	response := &TrackNeedledrop{}
+	response := &TrackStream{}
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}

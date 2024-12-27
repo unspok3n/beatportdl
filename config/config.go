@@ -21,6 +21,7 @@ type AppConfig struct {
 	DownloadsDirectory string `yaml:"downloads_directory,omitempty"`
 	SortByContext      bool   `yaml:"sort_by_context,omitempty"`
 	SortByLabel        bool   `yaml:"sort_by_label,omitempty"`
+	TrackExists        string `yaml:"track_exists,omitempty"`
 
 	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
 	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
@@ -43,6 +44,13 @@ const (
 )
 
 var (
+	SupportedTrackExistsOptions = []string{
+		"error",
+		"skip",
+		"overwrite",
+		"update",
+	}
+
 	SupportedKeySystems = []string{
 		"traditional",
 		"traditional-short",
@@ -161,6 +169,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		ArtistsLimit:             3,
 		ArtistsShortForm:         "VA",
 		KeySystem:                "traditional-short",
+		TrackExists:              "error",
 		FixTags:                  true,
 		ShowProgress:             true,
 		MaxGlobalWorkers:         15,
@@ -201,6 +210,10 @@ func Parse(filePath string) (*AppConfig, error) {
 
 	if config.DownloadsDirectory == "" {
 		return nil, fmt.Errorf("no downloads directory provided")
+	}
+
+	if !PermittedValue(config.TrackExists, SupportedTrackExistsOptions...) {
+		return nil, fmt.Errorf("invalid track exists behavior")
 	}
 
 	return &config, nil

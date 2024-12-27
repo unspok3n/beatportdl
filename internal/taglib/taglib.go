@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	ErrInvalid      = errors.New("invalid file")
-	ErrSave         = errors.New("cannot save file")
-	ErrNoPicture    = errors.New("no picture")
-	ErrNoProperties = errors.New("no properties")
+	ErrInvalid   = errors.New("invalid file")
+	ErrSave      = errors.New("cannot save file")
+	ErrNoPicture = errors.New("no picture")
 )
 
 func init() {
@@ -91,11 +90,11 @@ func (f *File) SetProperty(property string, value *string) {
 
 func (f *File) PropertyKeys() ([]string, error) {
 	keysC := C.taglib_property_keys(f.fp)
-	if keysC == nil {
-		return nil, ErrNoProperties
-	}
 	defer C.taglib_property_free(keysC)
 	var keys []string
+	if keysC == nil {
+		return keys, nil
+	}
 	for i := 0; ; i++ {
 		cstr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(keysC)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
 		if *cstr == nil {
@@ -155,11 +154,11 @@ func (f *File) SetPicture(picture *Picture) error {
 
 func (f *File) ComplexPropertyKeys() ([]string, error) {
 	keysC := C.taglib_complex_property_keys(f.fp)
-	if keysC == nil {
-		return nil, ErrNoProperties
-	}
 	defer C.taglib_complex_property_free_keys(keysC)
 	var keys []string
+	if keysC == nil {
+		return keys, nil
+	}
 	for i := 0; ; i++ {
 		cstr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(keysC)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
 		if *cstr == nil {
