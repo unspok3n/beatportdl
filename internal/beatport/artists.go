@@ -3,30 +3,34 @@ package beatport
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
 type Artist struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type Artists []Artist
 
-func (a Artist) NameSanitized() string {
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
-	for _, char := range charsToRemove {
-		a.Name = strings.Replace(a.Name, char, "", -1)
+func (a *Artist) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+	templateValues := map[string]string{
+		"id":   strconv.Itoa(int(a.ID)),
+		"name": SanitizeForPath(a.Name),
+		"slug": a.Slug,
 	}
-	return a.Name
+	directoryName := ParseTemplate(template, templateValues)
+	return SanitizePath(directoryName, whitespace)
 }
 
-func (a Artists) Display(limit int, shortForm string) string {
+func (a *Artists) Display(limit int, shortForm string) string {
 	var artistNames []string
-	if shortForm != "" && len(a) > limit {
+	if shortForm != "" && len(*a) > limit {
 		return shortForm
 	}
-	for _, artist := range a {
+	for _, artist := range *a {
 		artistNames = append(artistNames, artist.Name)
 	}
 	artistsString := strings.Join(artistNames, ", ")

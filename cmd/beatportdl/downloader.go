@@ -28,29 +28,56 @@ func (app *application) createDirectory(baseDir string, subDir ...string) (strin
 	return fullPath, err
 }
 
-func (app *application) setupBasicDownloadsDirectory(baseDir string, release *beatport.Release) (string, error) {
-	dir := baseDir
-	if app.config.SortByContext {
-		subDir := release.DirectoryName(
-			app.config.ReleaseDirectoryTemplate,
-			app.config.WhitespaceCharacter,
-			app.config.ArtistsLimit,
-			app.config.ArtistsShortForm,
-		)
-		if app.config.SortByLabel && release != nil {
-			dir = filepath.Join(dir, release.Label.NameSanitized())
-		}
-		dir = filepath.Join(dir, subDir)
-	}
-	return app.createDirectory(dir)
+type DownloadsDirectoryEntity interface {
+	DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string
 }
 
-func (app *application) setupCustomDownloadsDirectory(baseDir string, subDir string) (string, error) {
-	dir := baseDir
+func (app *application) setupDownloadsDirectory(baseDir string, entity DownloadsDirectoryEntity) (string, error) {
 	if app.config.SortByContext {
-		dir = filepath.Join(dir, subDir)
+		var subDir string
+		switch castedEntity := entity.(type) {
+		case *beatport.Release:
+			subDir = castedEntity.DirectoryName(
+				app.config.ReleaseDirectoryTemplate,
+				app.config.WhitespaceCharacter,
+				app.config.ArtistsLimit,
+				app.config.ArtistsShortForm,
+			)
+			if app.config.SortByLabel && entity != nil {
+				baseDir = filepath.Join(baseDir, castedEntity.Label.Name)
+			}
+		case *beatport.Playlist:
+			subDir = castedEntity.DirectoryName(
+				app.config.PlaylistDirectoryTemplate,
+				app.config.WhitespaceCharacter,
+				0,
+				"",
+			)
+		case *beatport.Chart:
+			subDir = castedEntity.DirectoryName(
+				app.config.ChartDirectoryTemplate,
+				app.config.WhitespaceCharacter,
+				0,
+				"",
+			)
+		case *beatport.Label:
+			subDir = castedEntity.DirectoryName(
+				app.config.LabelDirectoryTemplate,
+				app.config.WhitespaceCharacter,
+				0,
+				"",
+			)
+		case *beatport.Artist:
+			subDir = castedEntity.DirectoryName(
+				app.config.ArtistDirectoryTemplate,
+				app.config.WhitespaceCharacter,
+				0,
+				"",
+			)
+		}
+		baseDir = filepath.Join(baseDir, subDir)
 	}
-	return app.createDirectory(dir)
+	return app.createDirectory(baseDir)
 }
 
 func (app *application) requireCover(respectFixTags, respectKeepCover bool) bool {
@@ -376,7 +403,7 @@ func (app *application) handleTrackLink(url string, link beatport.Link) {
 	}
 	track.Release = *release
 
-	downloadsDir, err := app.setupBasicDownloadsDirectory(app.config.DownloadsDirectory, release)
+	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, release)
 	if err != nil {
 		app.errorLogWrapper(url, "setup downloads directory", err)
 		return
@@ -412,7 +439,7 @@ func (app *application) handleReleaseLink(url string, link beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupBasicDownloadsDirectory(app.config.DownloadsDirectory, release)
+	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, release)
 	if err != nil {
 		app.errorLogWrapper(url, "setup downloads directory", err)
 		return
@@ -461,10 +488,7 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupCustomDownloadsDirectory(
-		app.config.DownloadsDirectory,
-		playlist.Name,
-	)
+	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, playlist)
 	if err != nil {
 		app.errorLogWrapper(url, "setup downloads directory", err)
 		return
@@ -516,10 +540,7 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupCustomDownloadsDirectory(
-		app.config.DownloadsDirectory,
-		chart.Name,
-	)
+	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, chart)
 	if err != nil {
 		app.errorLogWrapper(url, "setup downloads directory", err)
 		return
@@ -584,10 +605,7 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupCustomDownloadsDirectory(
-		app.config.DownloadsDirectory,
-		label.NameSanitized(),
-	)
+	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, label)
 	if err != nil {
 		app.errorLogWrapper(url, "setup downloads directory", err)
 		return
@@ -596,10 +614,7 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 	err = ForPaginated[beatport.Release](link.ID, app.bp.GetLabelReleases, func(release beatport.Release, i int) error {
 		app.background(func() {
 			releaseStoreUrl := release.StoreUrl()
-			releaseDir, err := app.setupBasicDownloadsDirectory(
-				downloadsDir,
-				&release,
-			)
+			releaseDir, err := app.setupDownloadsDirectory(downloadsDir, &release)
 			if err != nil {
 				app.errorLogWrapper(releaseStoreUrl, "setup release downloads directory", err)
 				return
@@ -660,10 +675,7 @@ func (app *application) handleArtistLink(url string, link beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupCustomDownloadsDirectory(
-		app.config.DownloadsDirectory,
-		artist.NameSanitized(),
-	)
+	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, artist)
 	if err != nil {
 		app.errorLogWrapper(url, "setup downloads directory", err)
 		return
@@ -686,10 +698,7 @@ func (app *application) handleArtistLink(url string, link beatport.Link) {
 			}
 			t.Release = *release
 
-			releaseDir, err := app.setupBasicDownloadsDirectory(
-				downloadsDir,
-				release,
-			)
+			releaseDir, err := app.setupDownloadsDirectory(downloadsDir, release)
 			if err != nil {
 				app.errorLogWrapper(trackStoreUrl, "setup track release downloads directory", err)
 				return

@@ -52,6 +52,19 @@ type Image struct {
 	DynamicURI string `json:"dynamic_uri"`
 }
 
+type Duration int
+
+func (d *Duration) Display() string {
+	seconds := *d / 1000
+	hours := seconds / 3600
+	minutes := (seconds % 3600) / 60
+	remainingSeconds := seconds % 60
+	if hours > 0 {
+		return fmt.Sprintf("%02d-%02d-%02d", hours, minutes, remainingSeconds)
+	}
+	return fmt.Sprintf("%02d-%02d", minutes, remainingSeconds)
+}
+
 type SanitizedString string
 
 func (s *SanitizedString) UnmarshalJSON(data []byte) error {
@@ -70,18 +83,8 @@ func (s *SanitizedString) String() string {
 	return string(*s)
 }
 
-type ArtistType string
-
-var (
-	ArtistTypeMain     ArtistType = "main"
-	ArtistTypeRemixers ArtistType = "remixers"
-)
-
 const (
-	clientId = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
-)
-
-const (
+	clientId      = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
 	baseUrl       = "https://api.beatport.com/v4"
 	tokenEndpoint = "/auth/o/token/"
 	authEndpoint  = "/auth/o/authorize/?client_id=" + clientId + "&response_type=code"
@@ -375,4 +378,36 @@ func (i *Image) FormattedUrl(size string) string {
 		size,
 		-1,
 	)
+}
+
+func SanitizeForPath(s string) string {
+	r := strings.NewReplacer(
+		"\\", "",
+		"/", "",
+	)
+	return strings.Join(strings.Fields(r.Replace(s)), " ")
+}
+
+func SanitizePath(name string, whitespace string) string {
+	if len(name) > 250 {
+		name = name[:250]
+	}
+
+	oldnew := []string{
+		"?", "",
+		"\"", "",
+		"|", "",
+		"*", "",
+		"<", "",
+		">", "",
+	}
+
+	if whitespace != "" {
+		oldnew = append(oldnew, " ", whitespace)
+	}
+
+	r := strings.NewReplacer(oldnew...)
+	name = r.Replace(name)
+
+	return strings.Join(strings.Fields(name), " ")
 }

@@ -23,12 +23,16 @@ type AppConfig struct {
 	SortByLabel        bool   `yaml:"sort_by_label,omitempty"`
 	TrackExists        string `yaml:"track_exists,omitempty"`
 
-	ReleaseDirectoryTemplate string `yaml:"release_directory_template,omitempty"`
-	TrackFileTemplate        string `yaml:"track_file_template,omitempty"`
-	WhitespaceCharacter      string `yaml:"whitespace_character,omitempty"`
-	ArtistsLimit             int    `yaml:"artists_limit,omitempty"`
-	ArtistsShortForm         string `yaml:"artists_short_form,omitempty"`
-	KeySystem                string `yaml:"key_system,omitempty"`
+	ReleaseDirectoryTemplate  string `yaml:"release_directory_template,omitempty"`
+	PlaylistDirectoryTemplate string `yaml:"playlist_directory_template,omitempty"`
+	ChartDirectoryTemplate    string `yaml:"chart_directory_template,omitempty"`
+	LabelDirectoryTemplate    string `yaml:"label_directory_template,omitempty"`
+	ArtistDirectoryTemplate   string `yaml:"artist_directory_template,omitempty"`
+	TrackFileTemplate         string `yaml:"track_file_template,omitempty"`
+	WhitespaceCharacter       string `yaml:"whitespace_character,omitempty"`
+	ArtistsLimit              int    `yaml:"artists_limit,omitempty"`
+	ArtistsShortForm          string `yaml:"artists_short_form,omitempty"`
+	KeySystem                 string `yaml:"key_system,omitempty"`
 
 	CoverSize string `yaml:"cover_size,omitempty"`
 	KeepCover bool   `yaml:"keep_cover,omitempty"`
@@ -162,18 +166,22 @@ func Parse(filePath string) (*AppConfig, error) {
 		return nil, err
 	}
 	config := AppConfig{
-		Quality:                  "lossless",
-		CoverSize:                DefaultCoverSize,
-		TrackFileTemplate:        "{number}. {artists} - {name} ({mix_name})",
-		ReleaseDirectoryTemplate: "[{catalog_number}] {artists} - {name}",
-		ArtistsLimit:             3,
-		ArtistsShortForm:         "VA",
-		KeySystem:                "traditional-short",
-		TrackExists:              "error",
-		FixTags:                  true,
-		ShowProgress:             true,
-		MaxGlobalWorkers:         15,
-		MaxDownloadWorkers:       15,
+		Quality:                   "lossless",
+		CoverSize:                 DefaultCoverSize,
+		TrackFileTemplate:         "{number}. {artists} - {name} ({mix_name})",
+		ReleaseDirectoryTemplate:  "[{catalog_number}] {artists} - {name}",
+		PlaylistDirectoryTemplate: "{name} [{created_date}]",
+		ChartDirectoryTemplate:    "{name} [{published_date}]",
+		LabelDirectoryTemplate:    "{name} [{updated_date}]",
+		ArtistDirectoryTemplate:   "{name}",
+		ArtistsLimit:              3,
+		ArtistsShortForm:          "VA",
+		KeySystem:                 "traditional-short",
+		TrackExists:               "error",
+		FixTags:                   true,
+		ShowProgress:              true,
+		MaxGlobalWorkers:          15,
+		MaxDownloadWorkers:        15,
 	}
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {

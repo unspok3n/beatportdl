@@ -3,11 +3,46 @@ package beatport
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 )
 
 type Chart struct {
-	Name  string `json:"name"`
-	Image Image  `json:"image"`
+	ID          int64       `json:"id"`
+	Name        string      `json:"name"`
+	Slug        string      `json:"slug"`
+	TrackCount  int         `json:"track_count"`
+	Person      ChartPerson `json:"person"`
+	Genres      []Genre     `json:"genres"`
+	AddDate     time.Time   `json:"add_date"`
+	ChangeDate  time.Time   `json:"change_date"`
+	PublishDate time.Time   `json:"publish_date"`
+	Image       Image       `json:"image"`
+}
+
+type ChartPerson struct {
+	OwnerName string `json:"owner_name"`
+	OwnerSlug string `json:"owner_slug"`
+}
+
+func (c *Chart) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+	var firstGenre string
+	if len(c.Genres) > 0 {
+		firstGenre = c.Genres[0].Name
+	}
+	templateValues := map[string]string{
+		"id":             strconv.Itoa(int(c.ID)),
+		"name":           SanitizeForPath(c.Name),
+		"slug":           c.Slug,
+		"first_genre":    SanitizeForPath(firstGenre),
+		"track_count":    strconv.Itoa(c.TrackCount),
+		"creator":        SanitizeForPath(c.Person.OwnerName),
+		"created_date":   c.AddDate.Format("2006-01-02"),
+		"published_date": c.PublishDate.Format("2006-01-02"),
+		"updated_date":   c.ChangeDate.Format("2006-01-02"),
+	}
+	directoryName := ParseTemplate(template, templateValues)
+	return SanitizePath(directoryName, whitespace)
 }
 
 func (b *Beatport) GetChart(id int64) (*Chart, error) {

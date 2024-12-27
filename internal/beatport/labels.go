@@ -3,25 +3,32 @@ package beatport
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+	"strconv"
+	"time"
 )
 
 type Label struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	ID      int64     `json:"id"`
+	Name    string    `json:"name"`
+	Slug    string    `json:"slug"`
+	Created time.Time `json:"created"`
+	Updated time.Time `json:"updated"`
 }
 
-func (l Label) StoreUrl() string {
-	return fmt.Sprintf("https://www.beatport.com/label/%s/%d", l.Slug, l.ID)
-}
-
-func (l Label) NameSanitized() string {
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
-	for _, char := range charsToRemove {
-		l.Name = strings.Replace(l.Name, char, "", -1)
+func (l *Label) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+	templateValues := map[string]string{
+		"id":           strconv.Itoa(int(l.ID)),
+		"name":         SanitizeForPath(l.Name),
+		"slug":         l.Slug,
+		"created_date": l.Created.Format("2006-01-02"),
+		"updated_date": l.Updated.Format("2006-01-02"),
 	}
-	return l.Name
+	directoryName := ParseTemplate(template, templateValues)
+	return SanitizePath(directoryName, whitespace)
+}
+
+func (l *Label) StoreUrl() string {
+	return fmt.Sprintf("https://www.beatport.com/label/%s/%d", l.Slug, l.ID)
 }
 
 func (b *Beatport) GetLabel(id int64) (*Label, error) {

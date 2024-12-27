@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 )
 
 type Track struct {
@@ -28,10 +27,6 @@ type Track struct {
 	URL         string          `json:"url"`
 }
 
-type Genre struct {
-	Name string `json:"name"`
-}
-
 type TrackDownload struct {
 	Location      string `json:"location"`
 	StreamQuality string `json:"stream_quality"`
@@ -48,8 +43,6 @@ func (t *Track) StoreUrl() string {
 }
 
 func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string, keySystem string) string {
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">"}
-
 	artistsString := t.Artists.Display(aLimit, aShortForm)
 	remixersString := t.Remixers.Display(aLimit, aShortForm)
 
@@ -66,22 +59,7 @@ func (t *Track) Filename(template string, whitespace string, aLimit int, aShortF
 		"isrc":     t.ISRC,
 	}
 	fileName := ParseTemplate(template, templateValues)
-
-	for _, char := range charsToRemove {
-		fileName = strings.Replace(fileName, char, "", -1)
-	}
-
-	if len(fileName) > 250 {
-		fileName = fileName[:250]
-	}
-
-	fileName = strings.Join(strings.Fields(fileName), " ")
-
-	if whitespace != "" {
-		fileName = strings.Replace(fileName, " ", whitespace, -1)
-	}
-
-	return fileName
+	return SanitizePath(fileName, whitespace)
 }
 
 func (b *Beatport) GetTrack(id int64) (*Track, error) {

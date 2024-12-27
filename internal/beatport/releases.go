@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -74,39 +73,18 @@ func (r *Release) Year() string {
 }
 
 func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
-
 	artistsString := r.Artists.Display(aLimit, aShortForm)
 	remixersString := r.Remixers.Display(aLimit, aShortForm)
 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
-		"name":           r.Name.String(),
-		"artists":        artistsString,
-		"remixers":       remixersString,
+		"name":           SanitizeForPath(r.Name.String()),
+		"artists":        SanitizeForPath(artistsString),
+		"remixers":       SanitizeForPath(remixersString),
 		"date":           r.Date,
 		"year":           r.Year(),
 		"catalog_number": r.CatalogNumber.String(),
 	}
 	directoryName := ParseTemplate(template, templateValues)
-
-	for _, char := range charsToRemove {
-		directoryName = strings.Replace(directoryName, char, "", -1)
-		directoryName = strings.Join(strings.Fields(directoryName), " ")
-	}
-
-	if len(directoryName) > 250 {
-		directoryName = directoryName[:250]
-	}
-
-	if whitespace != "" {
-		directoryName = strings.Replace(
-			directoryName,
-			" ",
-			whitespace,
-			-1,
-		)
-	}
-
-	return directoryName
+	return SanitizePath(directoryName, whitespace)
 }
