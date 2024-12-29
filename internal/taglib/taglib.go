@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrInvalid   = errors.New("invalid file")
+	ErrStripMp4  = errors.New("cannot strip mp4 tags")
 	ErrSave      = errors.New("cannot save file")
 	ErrNoPicture = errors.New("no picture")
 )
@@ -65,6 +66,14 @@ func (f *File) SetItemMp4(key, value string) {
 	valueC := C.CString(value)
 	defer C.free(unsafe.Pointer(valueC))
 	C.taglib_set_item_mp4(f.fp, keyC, valueC)
+}
+
+func (f *File) StripMp4() error {
+	valueC := C.taglib_strip_mp4(f.fp)
+	if int(valueC) != 1 {
+		return ErrStripMp4
+	}
+	return nil
 }
 
 // Properties API

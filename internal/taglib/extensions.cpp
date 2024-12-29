@@ -32,6 +32,15 @@ void taglib_set_item_mp4(TagLib_File *file, const char *key, const char *value) 
     }
 }
 
+int taglib_strip_mp4(TagLib_File *file) {
+    if(file == NULL)
+        return 0;
+    TagLib::MP4::File *mfile = dynamic_cast<TagLib::MP4::File *>(reinterpret_cast<TagLib::FileRef *>(file)->file());
+    TagLib::MP4::Tag *tag = mfile->tag();
+    if(mfile->strip()) return 1;
+    return 0;
+}
+
 void taglib_set_picture(TagLib_File *file, const char *data, unsigned int size, const char *desc, const char *mime, const char *typ) {
     TAGLIB_COMPLEX_PROPERTY_PICTURE(props, data, size, desc, mime, typ);
     taglib_complex_property_set(file, "PICTURE", props);

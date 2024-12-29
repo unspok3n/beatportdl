@@ -273,13 +273,19 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"release_label_url":      track.Release.Label.StoreUrl(),
 	}
 
-	existingTags, err := file.PropertyKeys()
-	if err != nil {
-		return fmt.Errorf("read existing tags: %v", err)
-	}
+	if fileExt == ".m4a" {
+		if err = file.StripMp4(); err != nil {
+			return err
+		}
+	} else {
+		existingTags, err := file.PropertyKeys()
+		if err != nil {
+			return fmt.Errorf("read existing tags: %v", err)
+		}
 
-	for _, tag := range existingTags {
-		file.SetProperty(tag, nil)
+		for _, tag := range existingTags {
+			file.SetProperty(tag, nil)
+		}
 	}
 
 	if fileExt == ".flac" {
