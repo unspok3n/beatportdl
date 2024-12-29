@@ -239,6 +239,10 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			0,
 			"",
 		),
+		"track_remixers": track.Remixers.Display(
+			0,
+			"",
+		),
 		"track_number":              strconv.Itoa(track.Number),
 		"track_number_with_total":   fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
 		"track_genre":               track.Genre.Name,
@@ -253,6 +257,10 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"release_url":  track.Release.StoreUrl(),
 		"release_name": track.Release.Name.String(),
 		"release_artists": track.Release.Artists.Display(
+			0,
+			"",
+		),
+		"release_remixers": track.Release.Remixers.Display(
 			0,
 			"",
 		),
