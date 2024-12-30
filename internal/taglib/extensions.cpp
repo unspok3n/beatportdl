@@ -36,7 +36,6 @@ int taglib_strip_mp4(TagLib_File *file) {
     if(file == NULL)
         return 0;
     TagLib::MP4::File *mfile = dynamic_cast<TagLib::MP4::File *>(reinterpret_cast<TagLib::FileRef *>(file)->file());
-    TagLib::MP4::Tag *tag = mfile->tag();
     if(mfile->strip()) return 1;
     return 0;
 }
