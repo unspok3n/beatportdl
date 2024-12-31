@@ -11,14 +11,15 @@ Setup
 1. [Download](https://github.com/unspok3n/beatportdl/releases/) or [build](#building) BeatportDL.
 
      *Compiled binaries for Windows, macOS (amd64, arm64) and Linux are available on the [Releases](https://github.com/unspok3n/beatportdl/releases) page.*
+     *Don't forget to set the execute permission on unix systems, e.g., chmod +x beatportdl-darwin-arm64*
 
-2. Run beatportdl (e.g. `./beatportdl-darwin-arm64`), then specify the:
+3. Run beatportdl (e.g. `./beatportdl-darwin-arm64`), then specify the:
    - Beatport username
    - Beatport password
    - Downloads directory
    - Audio quality
 
-3. OPTIONAL: Customize a config file. Create a new config file by running:
+4. OPTIONAL: Customize a config file. Create a new config file by running:
 ```shell
 ./beatportdl
 ```
