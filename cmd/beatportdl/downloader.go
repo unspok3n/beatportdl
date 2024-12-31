@@ -243,7 +243,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"track_number_with_total":   fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
 		"track_genre":               track.Genre.Name,
 		"track_subgenre":            subgenre,
-		"track_genre_with_subgenre": track.GenreWithSubgenre(),
+		"track_genre_with_subgenre": track.GenreWithSubgenre("|"),
 		"track_subgenre_or_genre":   track.SubgenreOrGenre(),
 		"track_key":                 track.Key.Display(app.config.KeySystem),
 		"track_bpm":                 strconv.Itoa(track.BPM),

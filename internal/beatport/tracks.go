@@ -42,9 +42,9 @@ func (t *Track) StoreUrl() string {
 	return fmt.Sprintf("https://www.beatport.com/track/%s/%d", t.Slug, t.ID)
 }
 
-func (t *Track) GenreWithSubgenre() string {
+func (t *Track) GenreWithSubgenre(separator string) string {
 	if t.Subgenre != nil {
-		return t.Genre.Name + " | " + t.Subgenre.Name
+		return fmt.Sprintf("%s %s %s", t.Genre.Name, separator, t.Subgenre.Name)
 	}
 	return t.Genre.Name
 }
@@ -77,7 +77,7 @@ func (t *Track) Filename(template string, whitespace string, aLimit int, aShortF
 		"bpm":                 strconv.Itoa(t.BPM),
 		"genre":               SanitizeForPath(t.Genre.Name),
 		"subgenre":            SanitizeForPath(subgenre),
-		"genre_with_subgenre": SanitizeForPath(t.GenreWithSubgenre()),
+		"genre_with_subgenre": SanitizeForPath(t.GenreWithSubgenre(" - ")),
 		"subgenre_or_genre":   SanitizeForPath(t.SubgenreOrGenre()),
 		"isrc":                t.ISRC,
 		"label":               SanitizeForPath(t.Release.Label.Name),

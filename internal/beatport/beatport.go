@@ -394,12 +394,13 @@ func SanitizePath(name string, whitespace string) string {
 	}
 
 	oldnew := []string{
-		"?", "",
-		"\"", "",
-		"|", "",
-		"*", "",
 		"<", "",
 		">", "",
+		":", "",
+		"\"", "",
+		"|", "",
+		"?", "",
+		"*", "",
 	}
 
 	if whitespace != "" {
