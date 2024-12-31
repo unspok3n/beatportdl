@@ -1,14 +1,10 @@
 package taglib
 
 /*
-	#cgo LDFLAGS: -ltag -lz -ltag_c
+	#cgo LDFLAGS: -ltag -ltag_c -lz
 	#include <stdlib.h>
 	#include <taglib/tag_c.h>
-
-	void taglib_set_picture(TagLib_File *file, const char *data, unsigned int size, const char *desc, const char *mime, const char *typ) {
-		TAGLIB_COMPLEX_PROPERTY_PICTURE(props, data, size, desc, mime, typ);
-		taglib_complex_property_set(file, "PICTURE", props);
-	}
+	#include "extensions.h"
 */
 import "C"
 
@@ -18,10 +14,10 @@ import (
 )
 
 var (
-	ErrInvalid      = errors.New("invalid file")
-	ErrSave         = errors.New("cannot save file")
-	ErrNoPicture    = errors.New("no picture")
-	ErrNoProperties = errors.New("no properties")
+	ErrInvalid   = errors.New("invalid file")
+	ErrStripMp4  = errors.New("cannot strip mp4 tags")
+	ErrSave      = errors.New("cannot save file")
+	ErrNoPicture = errors.New("no picture")
 )
 
 func init() {
@@ -39,7 +35,7 @@ type File struct {
 func Read(filename string) (*File, error) {
 	cs := C.CString(filename)
 	defer C.free(unsafe.Pointer(cs))
-	fp := C.taglib_file_new(cs)
+	fp := C.taglib_file_new_wide(cs)
 	if fp == nil || C.taglib_file_is_valid(fp) == 0 {
 		return nil, ErrInvalid
 	}
@@ -50,45 +46,64 @@ func Read(filename string) (*File, error) {
 	}, nil
 }
 
-func (file *File) Close() {
-	C.taglib_file_free(file.fp)
-	file.fp = nil
-	file.tag = nil
-	file.props = nil
+func (f *File) Close() {
+	C.taglib_file_free(f.fp)
+	f.fp = nil
+	f.tag = nil
+	f.props = nil
 }
 
-func (file *File) Save() error {
-	if C.taglib_file_save(file.fp) != 1 {
+func (f *File) Save() error {
+	if C.taglib_file_save(f.fp) != 1 {
 		return ErrSave
 	}
 	return nil
 }
 
+func (f *File) SetItemMp4(key, value string) {
+	keyC := C.CString(key)
+	defer C.free(unsafe.Pointer(keyC))
+	valueC := C.CString(value)
+	defer C.free(unsafe.Pointer(valueC))
+	C.taglib_set_item_mp4(f.fp, keyC, valueC)
+}
+
+func (f *File) StripMp4() error {
+	valueC := C.taglib_strip_mp4(f.fp)
+	if int(valueC) != 1 {
+		return ErrStripMp4
+	}
+	return nil
+}
+
 // Properties API
-func (file *File) GetProperty(property string) string {
+func (f *File) GetProperty(property string) string {
 	propertyC := C.CString(property)
 	defer C.free(unsafe.Pointer(propertyC))
-	valueC := C.taglib_property_get(file.fp, propertyC)
+	valueC := C.taglib_property_get(f.fp, propertyC)
 	defer C.free(unsafe.Pointer(valueC))
 	value := C.GoString(*valueC)
 	return value
 }
 
-func (file *File) SetProperty(property string, value string) {
+func (f *File) SetProperty(property string, value *string) {
 	propertyC := getCCharPointer(property)
 	defer C.free(unsafe.Pointer(propertyC))
-	valueC := getCCharPointer(value)
-	defer C.free(unsafe.Pointer(valueC))
-	C.taglib_property_set(file.fp, propertyC, valueC)
+	var valueC *C.char
+	if value != nil {
+		valueC = getCCharPointer(*value)
+		defer C.free(unsafe.Pointer(valueC))
+	}
+	C.taglib_property_set(f.fp, propertyC, valueC)
 }
 
-func (file *File) PropertyKeys() ([]string, error) {
-	keysC := C.taglib_property_keys(file.fp)
-	if keysC == nil {
-		return nil, ErrNoProperties
-	}
+func (f *File) PropertyKeys() ([]string, error) {
+	keysC := C.taglib_property_keys(f.fp)
 	defer C.taglib_property_free(keysC)
 	var keys []string
+	if keysC == nil {
+		return keys, nil
+	}
 	for i := 0; ; i++ {
 		cstr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(keysC)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
 		if *cstr == nil {
@@ -99,8 +114,8 @@ func (file *File) PropertyKeys() ([]string, error) {
 	return keys, nil
 }
 
-func (file *File) SampleRate() int {
-	return int(C.taglib_audioproperties_samplerate(file.props))
+func (f *File) SampleRate() int {
+	return int(C.taglib_audioproperties_samplerate(f.props))
 }
 
 // Complex Properties API
@@ -112,10 +127,10 @@ type Picture struct {
 	Size        uint
 }
 
-func (file *File) GetPicture() (*Picture, error) {
+func (f *File) GetPicture() (*Picture, error) {
 	cs := C.CString("PICTURE")
 	defer C.free(unsafe.Pointer(cs))
-	property := C.taglib_complex_property_get(file.fp, cs)
+	property := C.taglib_complex_property_get(f.fp, cs)
 	if property == nil || *property == nil {
 		return nil, ErrNoPicture
 	}
@@ -132,7 +147,7 @@ func (file *File) GetPicture() (*Picture, error) {
 	}, nil
 }
 
-func (file *File) SetPicture(picture *Picture) error {
+func (f *File) SetPicture(picture *Picture) error {
 	dataC := C.CBytes(picture.Data)
 	defer C.free(dataC)
 	descC := C.CString(picture.Description)
@@ -142,17 +157,17 @@ func (file *File) SetPicture(picture *Picture) error {
 	typeC := C.CString(picture.PictureType)
 	defer C.free(unsafe.Pointer(typeC))
 
-	C.taglib_set_picture(file.fp, (*C.char)(dataC), C.uint(picture.Size), descC, mimeC, typeC)
+	C.taglib_set_picture(f.fp, (*C.char)(dataC), C.uint(picture.Size), descC, mimeC, typeC)
 	return nil
 }
 
-func (file *File) ComplexPropertyKeys() ([]string, error) {
-	keysC := C.taglib_complex_property_keys(file.fp)
-	if keysC == nil {
-		return nil, ErrNoProperties
-	}
+func (f *File) ComplexPropertyKeys() ([]string, error) {
+	keysC := C.taglib_complex_property_keys(f.fp)
 	defer C.taglib_complex_property_free_keys(keysC)
 	var keys []string
+	if keysC == nil {
+		return keys, nil
+	}
 	for i := 0; ; i++ {
 		cstr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(keysC)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
 		if *cstr == nil {

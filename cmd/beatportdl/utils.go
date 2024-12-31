@@ -154,6 +154,11 @@ func (app *application) LogError(caller string, err error) {
 	}
 }
 
+func (app *application) LogInfo(info string) {
+	message := fmt.Sprintf("%s\n", info)
+	fmt.Fprint(app.logWriter, message)
+}
+
 func (app *application) FatalError(caller string, err error) {
 	app.LogError(caller, err)
 	Pause()

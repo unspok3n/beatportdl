@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -15,11 +14,19 @@ type Release struct {
 	Artists       Artists         `json:"artists"`
 	Remixers      Artists         `json:"remixers"`
 	CatalogNumber SanitizedString `json:"catalog_number"`
+	UPC           string          `json:"upc"`
 	Label         Label           `json:"label"`
 	Date          string          `json:"new_release_date"`
 	Image         Image           `json:"image"`
+	BPMRange      ReleaseBPMRange `json:"bpm_range"`
 	TrackUrls     []string        `json:"tracks"`
+	TrackCount    int             `json:"track_count"`
 	URL           string          `json:"url"`
+}
+
+type ReleaseBPMRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 func (r *Release) StoreUrl() string {
@@ -62,46 +69,33 @@ func (b *Beatport) GetReleaseTracks(id int64, page int) (*Paginated[Track], erro
 	return &response, nil
 }
 
-func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
-	charsToRemove := []string{"/", "\\", "?", "\"", "|", "*", ":", "<", ">", "."}
-
-	artistsString := r.Artists.Display(aLimit, aShortForm)
-	remixersString := r.Remixers.Display(aLimit, aShortForm)
-
+func (r *Release) Year() string {
 	var year string
 	dateParsed, err := time.Parse("2006-01-02", r.Date)
 	if err == nil {
 		year = dateParsed.Format("2006")
 	}
+	return year
+}
+
+func (r *Release) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+	artistsString := r.Artists.Display(aLimit, aShortForm)
+	remixersString := r.Remixers.Display(aLimit, aShortForm)
 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
-		"name":           r.Name.String(),
-		"artists":        artistsString,
-		"remixers":       remixersString,
+		"name":           SanitizeForPath(r.Name.String()),
+		"slug":           r.Slug,
+		"artists":        SanitizeForPath(artistsString),
+		"remixers":       SanitizeForPath(remixersString),
 		"date":           r.Date,
-		"year":           year,
-		"catalog_number": r.CatalogNumber.String(),
+		"year":           r.Year(),
+		"track_count":    strconv.Itoa(r.TrackCount),
+		"bpm_range":      fmt.Sprintf("%d-%d", r.BPMRange.Min, r.BPMRange.Max),
+		"catalog_number": SanitizeForPath(r.CatalogNumber.String()),
+		"upc":            r.UPC,
+		"label":          SanitizeForPath(r.Label.Name),
 	}
 	directoryName := ParseTemplate(template, templateValues)
-
-	for _, char := range charsToRemove {
-		directoryName = strings.Replace(directoryName, char, "", -1)
-		directoryName = strings.Join(strings.Fields(directoryName), " ")
-	}
-
-	if len(directoryName) > 250 {
-		directoryName = directoryName[:250]
-	}
-
-	if whitespace != "" {
-		directoryName = strings.Replace(
-			directoryName,
-			" ",
-			whitespace,
-			-1,
-		)
-	}
-
-	return directoryName
+	return SanitizePath(directoryName, whitespace)
 }

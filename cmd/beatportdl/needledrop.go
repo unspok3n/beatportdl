@@ -25,7 +25,7 @@ type StreamKey struct {
 	IV    []byte
 }
 
-func GetStreamSegments(stream string) (*[]string, *StreamKey, error) {
+func getStreamSegments(stream string) (*[]string, *StreamKey, error) {
 	resp, err := http.Get(stream)
 	if err != nil {
 		return nil, nil, err
@@ -76,7 +76,7 @@ func GetStreamSegments(stream string) (*[]string, *StreamKey, error) {
 	return &segments, &streamKey, nil
 }
 
-func DecryptSegment(segment []byte, key StreamKey) ([]byte, error) {
+func decryptSegment(segment []byte, key StreamKey) ([]byte, error) {
 	block, err := aes.NewCipher(key.Value)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (app *application) downloadSegments(path string, segmentUrls []string, key 
 		if err != nil {
 			return "", err
 		}
-		decSegBytes, err := DecryptSegment(segBytes, key)
+		decSegBytes, err := decryptSegment(segBytes, key)
 		if err != nil {
 			return "", err
 		}
@@ -136,7 +136,7 @@ func (app *application) downloadSegments(path string, segmentUrls []string, key 
 	return path, nil
 }
 
-func RemuxToM4A(input, output string) error {
+func remuxToM4A(input, output string) error {
 	cmd := exec.Command("ffmpeg",
 		"-i", input,
 		"-map_metadata", "-1",

@@ -20,9 +20,9 @@ type ChordType struct {
 
 func (k *Key) Display(system string) string {
 	switch system {
-	case "traditional":
+	case "standard":
 		return k.Name
-	case "traditional-short":
+	case "standard-short":
 		var symbol string
 		if k.IsSharp {
 			symbol = "#"
