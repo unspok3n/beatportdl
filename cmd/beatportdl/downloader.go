@@ -224,12 +224,8 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 	defer file.Close()
 
 	subgenre := ""
-	genreWithSubgenre := track.Genre.Name
-	subgenreOrGenre := track.Genre.Name
 	if track.Subgenre != nil {
 		subgenre = track.Subgenre.Name
-		genreWithSubgenre = genreWithSubgenre + " | " + subgenre
-		subgenreOrGenre = subgenre
 	}
 	mappingValues := map[string]string{
 		"track_id":   strconv.Itoa(int(track.ID)),
@@ -247,8 +243,8 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"track_number_with_total":   fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
 		"track_genre":               track.Genre.Name,
 		"track_subgenre":            subgenre,
-		"track_genre_with_subgenre": genreWithSubgenre,
-		"track_subgenre_or_genre":   subgenreOrGenre,
+		"track_genre_with_subgenre": track.GenreWithSubgenre(),
+		"track_subgenre_or_genre":   track.SubgenreOrGenre(),
 		"track_key":                 track.Key.Display(app.config.KeySystem),
 		"track_bpm":                 strconv.Itoa(track.BPM),
 		"track_isrc":                track.ISRC,

@@ -19,7 +19,7 @@ type Track struct {
 	Subgenre    *Genre          `json:"sub_genre"`
 	ISRC        string          `json:"isrc"`
 	Length      string          `json:"length"`
-	LengthMs    int             `json:"length_ms"`
+	LengthMs    Duration        `json:"length_ms"`
 	Artists     Artists         `json:"artists"`
 	Remixers    Artists         `json:"remixers"`
 	PublishDate string          `json:"publish_date"`
@@ -42,21 +42,45 @@ func (t *Track) StoreUrl() string {
 	return fmt.Sprintf("https://www.beatport.com/track/%s/%d", t.Slug, t.ID)
 }
 
+func (t *Track) GenreWithSubgenre() string {
+	if t.Subgenre != nil {
+		return t.Genre.Name + " | " + t.Subgenre.Name
+	}
+	return t.Genre.Name
+}
+
+func (t *Track) SubgenreOrGenre() string {
+	if t.Subgenre != nil {
+		return t.Subgenre.Name
+	}
+	return t.Genre.Name
+}
+
 func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string, keySystem string) string {
 	artistsString := t.Artists.Display(aLimit, aShortForm)
 	remixersString := t.Remixers.Display(aLimit, aShortForm)
+	subgenre := ""
+	if t.Subgenre != nil {
+		subgenre = t.Subgenre.Name
+	}
 
 	templateValues := map[string]string{
-		"id":       strconv.Itoa(int(t.ID)),
-		"name":     t.Name.String(),
-		"mix_name": t.MixName.String(),
-		"artists":  artistsString,
-		"remixers": remixersString,
-		"number":   fmt.Sprintf("%02d", t.Number),
-		"key":      t.Key.Display(keySystem),
-		"bpm":      strconv.Itoa(t.BPM),
-		"genre":    t.Genre.Name,
-		"isrc":     t.ISRC,
+		"id":                  strconv.Itoa(int(t.ID)),
+		"name":                SanitizeForPath(t.Name.String()),
+		"slug":                t.Slug,
+		"mix_name":            SanitizeForPath(t.MixName.String()),
+		"artists":             SanitizeForPath(artistsString),
+		"remixers":            SanitizeForPath(remixersString),
+		"number":              fmt.Sprintf("%02d", t.Number),
+		"length":              t.LengthMs.Display(),
+		"key":                 t.Key.Display(keySystem),
+		"bpm":                 strconv.Itoa(t.BPM),
+		"genre":               SanitizeForPath(t.Genre.Name),
+		"subgenre":            SanitizeForPath(subgenre),
+		"genre_with_subgenre": SanitizeForPath(t.GenreWithSubgenre()),
+		"subgenre_or_genre":   SanitizeForPath(t.SubgenreOrGenre()),
+		"isrc":                t.ISRC,
+		"label":               SanitizeForPath(t.Release.Label.Name),
 	}
 	fileName := ParseTemplate(template, templateValues)
 	return SanitizePath(fileName, whitespace)

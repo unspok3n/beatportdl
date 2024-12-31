@@ -18,9 +18,15 @@ type Release struct {
 	Label         Label           `json:"label"`
 	Date          string          `json:"new_release_date"`
 	Image         Image           `json:"image"`
+	BPMRange      ReleaseBPMRange `json:"bpm_range"`
 	TrackUrls     []string        `json:"tracks"`
 	TrackCount    int             `json:"track_count"`
 	URL           string          `json:"url"`
+}
+
+type ReleaseBPMRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 func (r *Release) StoreUrl() string {
@@ -79,11 +85,16 @@ func (r *Release) DirectoryName(template string, whitespace string, aLimit int, 
 	templateValues := map[string]string{
 		"id":             strconv.Itoa(int(r.ID)),
 		"name":           SanitizeForPath(r.Name.String()),
+		"slug":           r.Slug,
 		"artists":        SanitizeForPath(artistsString),
 		"remixers":       SanitizeForPath(remixersString),
 		"date":           r.Date,
 		"year":           r.Year(),
-		"catalog_number": r.CatalogNumber.String(),
+		"track_count":    strconv.Itoa(r.TrackCount),
+		"bpm_range":      fmt.Sprintf("%d-%d", r.BPMRange.Min, r.BPMRange.Max),
+		"catalog_number": SanitizeForPath(r.CatalogNumber.String()),
+		"upc":            r.UPC,
+		"label":          SanitizeForPath(r.Label.Name),
 	}
 	directoryName := ParseTemplate(template, templateValues)
 	return SanitizePath(directoryName, whitespace)
