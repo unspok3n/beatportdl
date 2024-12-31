@@ -124,7 +124,7 @@ For e.g., Traktor doesn't recognize the track key tag in uppercase, so you have 
 ```yaml
 tag_mappings:
    m4a:
-      track_number: "initialkey_raw"
+      track_key: "initialkey_raw"
 ```
 
 Available `tag_mappings` keys: `track_id`,`track_url`,`track_name`,`track_artists`,`track_remixers`,`track_number`,`track_number_with_total`,`track_genre`,`track_subgenre`,`track_genre_with_subgenre`,`track_subgenre_or_genre`,`track_key`,`track_bpm`,`track_isrc`,`release_id`,`release_url`,`release_name`,`release_artists`,`release_remixers`,`release_date`,`release_year`,`release_track_count`,`release_catalog_number`,`release_upc`,`release_label`,`release_label_url`
