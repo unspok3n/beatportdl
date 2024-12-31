@@ -10,7 +10,7 @@ Setup
 ---
 1. [Download](https://github.com/unspok3n/beatportdl/releases/) or [build](#building) BeatportDL.
 
-     *Compiled binaries for Windows, macOS (amd64, arm64) and Linux are available on the [Releases](https://github.com/unspok3n/beatportdl/releases) page.*
+     *Compiled binaries for Windows, macOS (amd64, arm64) and Linux are available on the [Releases](https://github.com/unspok3n/beatportdl/releases) page.* \
      *Don't forget to set the execute permission on unix systems, e.g., chmod +x beatportdl-darwin-arm64*
 
 3. Run beatportdl (e.g. `./beatportdl-darwin-arm64`), then specify the:
