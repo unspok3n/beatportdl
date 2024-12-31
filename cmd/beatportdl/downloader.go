@@ -511,7 +511,6 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 	wg := sync.WaitGroup{}
 	err = ForPaginated[beatport.PlaylistItem](link.ID, app.bp.GetPlaylistItems, func(item beatport.PlaylistItem, i int) error {
 		app.downloadWorker(&wg, func() {
-			item.Track.Number = item.Position
 			trackStoreUrl := item.Track.StoreUrl()
 
 			release, err := app.bp.GetRelease(item.Track.Release.ID)
@@ -521,19 +520,44 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 			}
 			item.Track.Release = *release
 
+			trackDownloadsDir := downloadsDir
+			if app.config.SortByContext && app.config.ForceReleaseDirectories {
+				trackFull, err := app.bp.GetTrack(item.Track.ID)
+				if err != nil {
+					app.errorLogWrapper(trackStoreUrl, "fetch full track", err)
+					return
+				}
+				item.Track.Number = trackFull.Number
+
+				trackDownloadsDir, err = app.setupDownloadsDirectory(downloadsDir, release)
+				if err != nil {
+					app.errorLogWrapper(trackStoreUrl, "setup track release directory", err)
+					return
+				}
+			} else {
+				item.Track.Number = item.Position
+			}
+
 			var cover string
-			if app.requireCover(true, false) {
-				cover, err = app.downloadCover(item.Track.Release.Image, downloadsDir)
+			if app.requireCover(true, app.config.ForceReleaseDirectories) {
+				cover, err = app.downloadCover(item.Track.Release.Image, trackDownloadsDir)
 				if err != nil {
 					app.errorLogWrapper(trackStoreUrl, "download track release cover", err)
-				} else {
+				} else if !app.config.ForceReleaseDirectories {
 					defer os.Remove(cover)
 				}
 			}
 
-			if err := app.handleTrack(&item.Track, downloadsDir, cover); err != nil {
+			if err := app.handleTrack(&item.Track, trackDownloadsDir, cover); err != nil {
 				app.errorLogWrapper(trackStoreUrl, "handle track", err)
 				return
+			}
+
+			if app.config.ForceReleaseDirectories {
+				if err := app.handleCoverFile(cover); err != nil {
+					app.errorLogWrapper(trackStoreUrl, "handle track release cover file", err)
+					return
+				}
 			}
 		})
 		return nil
@@ -576,7 +600,6 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 
 	err = ForPaginated[beatport.Track](link.ID, app.bp.GetChartTracks, func(track beatport.Track, i int) error {
 		app.downloadWorker(&wg, func() {
-			track.Number = i + 1
 			trackStoreUrl := track.StoreUrl()
 
 			release, err := app.bp.GetRelease(track.Release.ID)
@@ -586,19 +609,44 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 			}
 			track.Release = *release
 
+			trackDownloadsDir := downloadsDir
+			if app.config.SortByContext && app.config.ForceReleaseDirectories {
+				trackFull, err := app.bp.GetTrack(track.ID)
+				if err != nil {
+					app.errorLogWrapper(trackStoreUrl, "fetch full track", err)
+					return
+				}
+				track.Number = trackFull.Number
+
+				trackDownloadsDir, err = app.setupDownloadsDirectory(downloadsDir, release)
+				if err != nil {
+					app.errorLogWrapper(trackStoreUrl, "setup track release directory", err)
+					return
+				}
+			} else {
+				track.Number = i + 1
+			}
+
 			var cover string
-			if app.requireCover(true, false) {
-				cover, err = app.downloadCover(track.Release.Image, downloadsDir)
+			if app.requireCover(true, app.config.ForceReleaseDirectories) {
+				cover, err = app.downloadCover(track.Release.Image, trackDownloadsDir)
 				if err != nil {
 					app.errorLogWrapper(trackStoreUrl, "download track release cover", err)
-				} else {
+				} else if !app.config.ForceReleaseDirectories {
 					defer os.Remove(cover)
 				}
 			}
 
-			if err := app.handleTrack(&track, downloadsDir, cover); err != nil {
+			if err := app.handleTrack(&track, trackDownloadsDir, cover); err != nil {
 				app.errorLogWrapper(trackStoreUrl, "handle track", err)
 				return
+			}
+
+			if app.config.ForceReleaseDirectories {
+				if err := app.handleCoverFile(cover); err != nil {
+					app.errorLogWrapper(trackStoreUrl, "handle track release cover file", err)
+					return
+				}
 			}
 		})
 		return nil
