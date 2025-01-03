@@ -77,7 +77,7 @@ func (t *Track) Filename(template string, whitespace string, aLimit int, aShortF
 		"bpm":                 strconv.Itoa(t.BPM),
 		"genre":               SanitizeForPath(t.Genre.Name),
 		"subgenre":            SanitizeForPath(subgenre),
-		"genre_with_subgenre": SanitizeForPath(t.GenreWithSubgenre(" - ")),
+		"genre_with_subgenre": SanitizeForPath(t.GenreWithSubgenre("-")),
 		"subgenre_or_genre":   SanitizeForPath(t.SubgenreOrGenre()),
 		"isrc":                t.ISRC,
 		"label":               SanitizeForPath(t.Release.Label.Name),

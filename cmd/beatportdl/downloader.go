@@ -350,12 +350,13 @@ func (app *application) handleTrack(track *beatport.Track, downloadsDir string, 
 
 func ForPaginated[T any](
 	entityId int64,
-	fetchPage func(id int64, page int) (results *beatport.Paginated[T], err error),
+	params string,
+	fetchPage func(id int64, page int, params string) (results *beatport.Paginated[T], err error),
 	processItem func(item T, i int) error,
 ) error {
 	page := 1
 	for {
-		paginated, err := fetchPage(entityId, page)
+		paginated, err := fetchPage(entityId, page, params)
 		if err != nil {
 			return fmt.Errorf("fetch page: %w", err)
 		}
@@ -505,7 +506,7 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 	}
 
 	wg := sync.WaitGroup{}
-	err = ForPaginated[beatport.PlaylistItem](link.ID, app.bp.GetPlaylistItems, func(item beatport.PlaylistItem, i int) error {
+	err = ForPaginated[beatport.PlaylistItem](link.ID, "", app.bp.GetPlaylistItems, func(item beatport.PlaylistItem, i int) error {
 		app.downloadWorker(&wg, func() {
 			trackStoreUrl := item.Track.StoreUrl()
 
@@ -594,7 +595,7 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 		})
 	}
 
-	err = ForPaginated[beatport.Track](link.ID, app.bp.GetChartTracks, func(track beatport.Track, i int) error {
+	err = ForPaginated[beatport.Track](link.ID, "", app.bp.GetChartTracks, func(track beatport.Track, i int) error {
 		app.downloadWorker(&wg, func() {
 			trackStoreUrl := track.StoreUrl()
 
@@ -669,7 +670,7 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 		return
 	}
 
-	err = ForPaginated[beatport.Release](link.ID, app.bp.GetLabelReleases, func(release beatport.Release, i int) error {
+	err = ForPaginated[beatport.Release](link.ID, link.Params, app.bp.GetLabelReleases, func(release beatport.Release, i int) error {
 		app.background(func() {
 			releaseStoreUrl := release.StoreUrl()
 			releaseDir, err := app.setupDownloadsDirectory(downloadsDir, &release)
@@ -689,7 +690,7 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 			}
 
 			wg := sync.WaitGroup{}
-			err = ForPaginated[beatport.Track](release.ID, app.bp.GetReleaseTracks, func(track beatport.Track, i int) error {
+			err = ForPaginated[beatport.Track](release.ID, "", app.bp.GetReleaseTracks, func(track beatport.Track, i int) error {
 				app.downloadWorker(&wg, func() {
 					trackStoreUrl := track.StoreUrl()
 					t, err := app.bp.GetTrack(track.ID)
@@ -740,7 +741,7 @@ func (app *application) handleArtistLink(url string, link beatport.Link) {
 	}
 
 	wg := sync.WaitGroup{}
-	err = ForPaginated[beatport.Track](link.ID, app.bp.GetArtistTracks, func(track beatport.Track, i int) error {
+	err = ForPaginated[beatport.Track](link.ID, link.Params, app.bp.GetArtistTracks, func(track beatport.Track, i int) error {
 		app.downloadWorker(&wg, func() {
 			trackStoreUrl := track.StoreUrl()
 			t, err := app.bp.GetTrack(track.ID)

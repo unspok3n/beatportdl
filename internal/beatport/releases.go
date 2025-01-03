@@ -51,10 +51,10 @@ func (b *Beatport) GetRelease(id int64) (*Release, error) {
 	return response, nil
 }
 
-func (b *Beatport) GetReleaseTracks(id int64, page int) (*Paginated[Track], error) {
+func (b *Beatport) GetReleaseTracks(id int64, page int, params string) (*Paginated[Track], error) {
 	res, err := b.fetch(
 		"GET",
-		fmt.Sprintf("/catalog/releases/%d/tracks/?page=%d", id, page),
+		fmt.Sprintf("/catalog/releases/%d/tracks/?page=%d&%s", id, page, params),
 		nil,
 		"",
 	)

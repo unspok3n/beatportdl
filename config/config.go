@@ -6,6 +6,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"os/exec"
+	"unspok3n/beatportdl/internal/validator"
 )
 
 type AppConfig struct {
@@ -64,15 +65,6 @@ var (
 	}
 )
 
-func PermittedValue[T comparable](value T, permittedValues ...T) bool {
-	for i := range permittedValues {
-		if value == permittedValues[i] {
-			return true
-		}
-	}
-	return false
-}
-
 func FFMPEGInstalled() bool {
 	_, err := exec.LookPath("ffmpeg")
 	return err == nil
@@ -130,7 +122,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		config.TagMappings = DefaultTagMappings
 	}
 
-	if !PermittedValue(config.KeySystem, SupportedKeySystems...) {
+	if !validator.PermittedValue(config.KeySystem, SupportedKeySystems...) {
 		return nil, fmt.Errorf("invalid key system")
 	}
 
@@ -138,7 +130,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		return nil, fmt.Errorf("no downloads directory provided")
 	}
 
-	if !PermittedValue(config.TrackExists, SupportedTrackExistsOptions...) {
+	if !validator.PermittedValue(config.TrackExists, SupportedTrackExistsOptions...) {
 		return nil, fmt.Errorf("invalid track exists behavior")
 	}
 

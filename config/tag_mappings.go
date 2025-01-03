@@ -1,15 +1,18 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"unspok3n/beatportdl/internal/validator"
+)
 
 func ValidateTagMappings(m map[string]map[string]string) error {
 	for format, mappings := range m {
-		if !PermittedValue(format, SupportedTagMappingFormats...) {
+		if !validator.PermittedValue(format, SupportedTagMappingFormats...) {
 			return fmt.Errorf("invalid tag mapping format '%s'", format)
 		}
 
 		for field := range mappings {
-			if !PermittedValue(field, SupportedTagMappingFields...) {
+			if !validator.PermittedValue(field, SupportedTagMappingFields...) {
 				return fmt.Errorf("invalid tag mapping field '%s'", field)
 			}
 		}

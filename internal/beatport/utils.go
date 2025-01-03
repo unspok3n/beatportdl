@@ -21,8 +21,9 @@ var (
 )
 
 type Link struct {
-	Type LinkType
-	ID   int64
+	Type   LinkType
+	ID     int64
+	Params string
 }
 
 var (
@@ -37,68 +38,74 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 
 	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
 	segmentsLength := len(segments)
+	var link Link
 
-	if segmentsLength == 4 && len(segments[0]) == 2 && segments[0] != "v4" {
+	if segmentsLength == 0 {
+		return nil, ErrInvalidUrl
+	}
+
+	if segmentsLength > 1 && len(segments[0]) == 2 {
 		segments = segments[1:]
 		segmentsLength--
+
+		if segments[0] == "catalog" {
+			segments = segments[1:]
+			segmentsLength--
+		}
 	}
 
-	if segmentsLength == 3 {
-		id, err := strconv.ParseInt(segments[2], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid id: %v", err)
-		}
-		var linkType LinkType
-		switch segments[0] {
-		case "track":
-			linkType = TrackLink
-		case "release":
-			linkType = ReleaseLink
-		case "library":
-			switch segments[1] {
-			case "playlists":
-				linkType = PlaylistLink
-			default:
-				return nil, fmt.Errorf("invalid link type: %s/%s", segments[0], segments[1])
-			}
+	var idSegment int
+
+	switch segments[0] {
+	case "track":
+		idSegment = 2
+		link.Type = TrackLink
+	case "release":
+		idSegment = 2
+		link.Type = ReleaseLink
+	case "library":
+		switch segments[1] {
 		case "playlists":
-			linkType = PlaylistLink
-		case "chart":
-			linkType = ChartLink
-		case "label":
-			linkType = LabelLink
-		case "artist":
-			linkType = ArtistLink
+			idSegment = 2
+			link.Type = PlaylistLink
 		default:
-			return nil, fmt.Errorf("invalid link type: %s", segments[0])
+			return nil, fmt.Errorf("invalid link type: %s/%s", segments[0], segments[1])
 		}
-		return &Link{
-			Type: linkType,
-			ID:   id,
-		}, nil
+	case "playlists":
+		idSegment = 2
+		link.Type = PlaylistLink
+	case "chart":
+		idSegment = 2
+		link.Type = ChartLink
+	case "label":
+		idSegment = 2
+		link.Type = LabelLink
+	case "artist":
+		idSegment = 2
+		link.Type = ArtistLink
+
+	case "tracks":
+		idSegment = 1
+		link.Type = TrackLink
+	case "releases":
+		idSegment = 1
+		link.Type = ReleaseLink
+	default:
+		return nil, ErrInvalidUrl
 	}
 
-	if segmentsLength == 4 {
-		id, err := strconv.ParseInt(segments[3], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid id: %v", err)
-		}
-		var linkType LinkType
-		switch segments[2] {
-		case "tracks":
-			linkType = TrackLink
-		case "releases":
-			linkType = ReleaseLink
-		default:
-			return nil, fmt.Errorf("invalid link type: %s", segments[2])
-		}
-		return &Link{
-			Type: linkType,
-			ID:   id,
-		}, nil
+	if idSegment+1 > segmentsLength {
+		return nil, ErrInvalidUrl
 	}
 
-	return nil, ErrInvalidUrl
+	link.ID, err = strconv.ParseInt(segments[idSegment], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid id: %v", err)
+	}
+
+	link.Params = u.RawQuery
+
+	return &link, nil
 }
 
 func ParseTemplate(template string, values map[string]string) string {

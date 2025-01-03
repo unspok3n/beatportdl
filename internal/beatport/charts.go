@@ -63,10 +63,10 @@ func (b *Beatport) GetChart(id int64) (*Chart, error) {
 	return response, nil
 }
 
-func (b *Beatport) GetChartTracks(id int64, page int) (*Paginated[Track], error) {
+func (b *Beatport) GetChartTracks(id int64, page int, params string) (*Paginated[Track], error) {
 	res, err := b.fetch(
 		"GET",
-		fmt.Sprintf("/catalog/charts/%d/tracks/?page=%d", id, page),
+		fmt.Sprintf("/catalog/charts/%d/tracks/?page=%d&%s", id, page, params),
 		nil,
 		"",
 	)

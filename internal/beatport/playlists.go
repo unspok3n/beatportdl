@@ -68,10 +68,10 @@ func (b *Beatport) GetPlaylist(id int64) (*Playlist, error) {
 	return response, nil
 }
 
-func (b *Beatport) GetPlaylistItems(id int64, page int) (*Paginated[PlaylistItem], error) {
+func (b *Beatport) GetPlaylistItems(id int64, page int, params string) (*Paginated[PlaylistItem], error) {
 	res, err := b.fetch(
 		"GET",
-		fmt.Sprintf("/catalog/playlists/%d/tracks/?page=%d", id, page),
+		fmt.Sprintf("/catalog/playlists/%d/tracks/?page=%d&%s", id, page, params),
 		nil,
 		"",
 	)
