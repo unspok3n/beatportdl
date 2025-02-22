@@ -518,21 +518,18 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 			item.Track.Release = *release
 
 			trackDownloadsDir := downloadsDir
+			trackFull, err := app.bp.GetTrack(item.Track.ID)
+			if err != nil {
+				app.errorLogWrapper(trackStoreUrl, "fetch full track", err)
+				return
+			}
+			item.Track.Number = trackFull.Number
 			if app.config.SortByContext && app.config.ForceReleaseDirectories {
-				trackFull, err := app.bp.GetTrack(item.Track.ID)
-				if err != nil {
-					app.errorLogWrapper(trackStoreUrl, "fetch full track", err)
-					return
-				}
-				item.Track.Number = trackFull.Number
-
 				trackDownloadsDir, err = app.setupDownloadsDirectory(downloadsDir, release)
 				if err != nil {
 					app.errorLogWrapper(trackStoreUrl, "setup track release directory", err)
 					return
 				}
-			} else {
-				item.Track.Number = item.Position
 			}
 
 			var cover string
@@ -607,21 +604,18 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 			track.Release = *release
 
 			trackDownloadsDir := downloadsDir
+			trackFull, err := app.bp.GetTrack(track.ID)
+			if err != nil {
+				app.errorLogWrapper(trackStoreUrl, "fetch full track", err)
+				return
+			}
+			track.Number = trackFull.Number
 			if app.config.SortByContext && app.config.ForceReleaseDirectories {
-				trackFull, err := app.bp.GetTrack(track.ID)
-				if err != nil {
-					app.errorLogWrapper(trackStoreUrl, "fetch full track", err)
-					return
-				}
-				track.Number = trackFull.Number
-
 				trackDownloadsDir, err = app.setupDownloadsDirectory(downloadsDir, release)
 				if err != nil {
 					app.errorLogWrapper(trackStoreUrl, "setup track release directory", err)
 					return
 				}
-			} else {
-				track.Number = i + 1
 			}
 
 			var cover string
