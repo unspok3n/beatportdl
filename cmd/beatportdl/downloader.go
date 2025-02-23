@@ -228,16 +228,18 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		subgenre = track.Subgenre.Name
 	}
 	mappingValues := map[string]string{
-		"track_id":   strconv.Itoa(int(track.ID)),
-		"track_url":  track.StoreUrl(),
-		"track_name": fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()),
-		"track_artists": track.Artists.Display(
-			0,
-			"",
+		"track_id":       strconv.Itoa(int(track.ID)),
+		"track_url":      track.StoreUrl(),
+		"track_name":     fmt.Sprintf("%s (%s)", track.Name.String(), track.MixName.String()),
+		"track_artists":  track.Artists.Display(0, ""),
+		"track_remixers": track.Remixers.Display(0, ""),
+		"track_artists_limited": track.Artists.Display(
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
 		),
-		"track_remixers": track.Remixers.Display(
-			0,
-			"",
+		"track_remixers_limited": track.Remixers.Display(
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
 		),
 		"track_number":              strconv.Itoa(track.Number),
 		"track_number_with_total":   fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
@@ -259,6 +261,14 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 		"release_remixers": track.Release.Remixers.Display(
 			0,
 			"",
+		),
+		"release_artists_limited": track.Release.Artists.Display(
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
+		),
+		"release_remixers_limited": track.Release.Remixers.Display(
+			app.config.ArtistsLimit,
+			app.config.ArtistsShortForm,
 		),
 		"release_date":           track.Release.Date,
 		"release_year":           track.Release.Year(),
