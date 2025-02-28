@@ -163,16 +163,35 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 	)
 	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
 	if _, err := os.Stat(filePath); err == nil {
-		switch app.config.TrackExists {
-		case "skip":
-			return "", nil
-		case "update":
-			app.infoLogWrapper(track.StoreUrl(), "updating tags")
-			return filePath, nil
-		case "error":
-			return "", ErrTrackFileExists
+		app.activeFilesMutex.RLock()
+		_, exists := app.activeFiles[filePath]
+		app.activeFilesMutex.RUnlock()
+
+		if exists {
+			i := 1
+			for {
+				filePath = fmt.Sprintf("%s/%s (%d)%s", directory, fileName, i, fileExtension)
+				if _, err := os.Stat(filePath); os.IsNotExist(err) {
+					break
+				}
+				i++
+			}
+		} else {
+			switch app.config.TrackExists {
+			case "skip":
+				return "", nil
+			case "update":
+				app.infoLogWrapper(track.StoreUrl(), "updating tags")
+				return filePath, nil
+			case "error":
+				return "", ErrTrackFileExists
+			}
 		}
 	}
+
+	app.activeFilesMutex.Lock()
+	app.activeFiles[filePath] = struct{}{}
+	app.activeFilesMutex.Unlock()
 
 	var prefix string
 	infoDisplay := fmt.Sprintf("%s (%s) [%s]", track.Name.String(), track.MixName.String(), displayQuality)

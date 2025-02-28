@@ -19,15 +19,17 @@ const (
 )
 
 type application struct {
-	config      *config.AppConfig
-	logFile     *os.File
-	logWriter   io.Writer
-	bp          *beatport.Beatport
-	wg          sync.WaitGroup
-	downloadSem chan struct{}
-	globalSem   chan struct{}
-	pbp         *mpb.Progress
-	urls        []string
+	config           *config.AppConfig
+	logFile          *os.File
+	logWriter        io.Writer
+	bp               *beatport.Beatport
+	wg               sync.WaitGroup
+	downloadSem      chan struct{}
+	globalSem        chan struct{}
+	pbp              *mpb.Progress
+	urls             []string
+	activeFiles      map[string]struct{}
+	activeFilesMutex sync.RWMutex
 }
 
 func main() {
@@ -91,6 +93,7 @@ func main() {
 
 		app.pbp = mpb.New(mpb.WithAutoRefresh(), mpb.WithOutput(color.Output))
 		app.logWriter = app.pbp
+		app.activeFiles = make(map[string]struct{}, len(app.urls))
 
 		for _, url := range app.urls {
 			app.background(func() {
