@@ -203,6 +203,7 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 
 	if download != nil {
 		if err := app.downloadFile(download.Location, filePath, prefix); err != nil {
+			os.Remove(filePath)
 			return "", err
 		}
 	} else if stream != nil {
@@ -216,6 +217,7 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 			return "", fmt.Errorf("download segments: %v", err)
 		}
 		if err := remuxToM4A(segmentsFile, filePath); err != nil {
+			os.Remove(filePath)
 			return "", fmt.Errorf("remux to m4a: %v", err)
 		}
 	}
@@ -377,6 +379,12 @@ func (app *application) handleTrack(track *beatport.Track, downloadsDir string, 
 	return nil
 }
 
+func (app *application) cleanup(downloadsDir string) {
+	if downloadsDir != app.config.DownloadsDirectory {
+		os.Remove(downloadsDir)
+	}
+}
+
 func ForPaginated[T any](
 	entityId int64,
 	params string,
@@ -461,6 +469,7 @@ func (app *application) handleTrackLink(url string, link beatport.Link) {
 
 		if err := app.handleTrack(track, downloadsDir, cover); err != nil {
 			app.errorLogWrapper(url, "handle track", err)
+			os.Remove(cover)
 			return
 		}
 
@@ -470,6 +479,8 @@ func (app *application) handleTrackLink(url string, link beatport.Link) {
 		}
 	})
 	wg.Wait()
+
+	app.cleanup(downloadsDir)
 }
 
 func (app *application) handleReleaseLink(url string, link beatport.Link) {
@@ -519,6 +530,8 @@ func (app *application) handleReleaseLink(url string, link beatport.Link) {
 		app.errorLogWrapper(url, "handle cover file", err)
 		return
 	}
+
+	app.cleanup(downloadsDir)
 }
 
 func (app *application) handlePlaylistLink(url string, link beatport.Link) {
@@ -573,6 +586,8 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 
 			if err := app.handleTrack(&item.Track, trackDownloadsDir, cover); err != nil {
 				app.errorLogWrapper(trackStoreUrl, "handle track", err)
+				os.Remove(cover)
+				app.cleanup(trackDownloadsDir)
 				return
 			}
 
@@ -582,6 +597,8 @@ func (app *application) handlePlaylistLink(url string, link beatport.Link) {
 					return
 				}
 			}
+
+			app.cleanup(trackDownloadsDir)
 		})
 		return nil
 	})
@@ -659,6 +676,8 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 
 			if err := app.handleTrack(&track, trackDownloadsDir, cover); err != nil {
 				app.errorLogWrapper(trackStoreUrl, "handle track", err)
+				os.Remove(cover)
+				app.cleanup(trackDownloadsDir)
 				return
 			}
 
@@ -668,6 +687,8 @@ func (app *application) handleChartLink(url string, link beatport.Link) {
 					return
 				}
 			}
+
+			app.cleanup(trackDownloadsDir)
 		})
 		return nil
 	})
@@ -732,9 +753,13 @@ func (app *application) handleLabelLink(url string, link beatport.Link) {
 			})
 			if err != nil {
 				app.errorLogWrapper(releaseStoreUrl, "handle release tracks", err)
+				os.Remove(cover)
+				app.cleanup(releaseDir)
 				return
 			}
 			wg.Wait()
+
+			app.cleanup(releaseDir)
 
 			if err := app.handleCoverFile(cover); err != nil {
 				app.errorLogWrapper(releaseStoreUrl, "handle cover file", err)
@@ -796,6 +821,8 @@ func (app *application) handleArtistLink(url string, link beatport.Link) {
 
 			if err := app.handleTrack(t, releaseDir, cover); err != nil {
 				app.errorLogWrapper(trackStoreUrl, "handle track", err)
+				os.Remove(cover)
+				app.cleanup(releaseDir)
 				return
 			}
 
@@ -803,6 +830,8 @@ func (app *application) handleArtistLink(url string, link beatport.Link) {
 				app.errorLogWrapper(trackStoreUrl, "handle cover file", err)
 				return
 			}
+
+			app.cleanup(releaseDir)
 		})
 		return nil
 	})
