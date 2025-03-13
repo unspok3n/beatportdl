@@ -2,9 +2,11 @@ package beatport
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +31,7 @@ type tokenPair struct {
 	ExpiresIn    int64  `json:"expires_in"`
 	TokenType    string `json:"token_type"`
 	Scope        string `json:"scope"`
+	LoginID      string `json:"login_id"`
 	IssuedAt     int64  `json:"issued_at"`
 }
 
@@ -94,6 +97,7 @@ const (
 var (
 	ErrInvalidAuthorizationCode = errors.New("invalid authorization code")
 	ErrInvalidSessionCookie     = errors.New("invalid session cookie")
+	ErrLoginIDMismatch          = errors.New("login id does not match")
 )
 
 func New(username string, password string, cacheFilePath string, proxyUrl string) *Beatport {
@@ -125,6 +129,14 @@ func New(username string, password string, cacheFilePath string, proxyUrl string
 	return &bp
 }
 
+func generateLoginID(username, password string) string {
+	hash := fnv.New64a()
+	data := fmt.Sprintf("%s:%s", username, password)
+	hash.Write([]byte(data))
+	hashBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashBytes)
+}
+
 func (b *Beatport) LoadCachedTokenPair() error {
 	data, err := os.ReadFile(b.cacheFilePath)
 	if err != nil {
@@ -134,6 +146,10 @@ func (b *Beatport) LoadCachedTokenPair() error {
 	var loadedToken tokenPair
 	if err := json.Unmarshal(data, &loadedToken); err != nil {
 		return fmt.Errorf("failed to unmarshal token data: %w", err)
+	}
+
+	if loadedToken.LoginID != generateLoginID(b.username, b.password) {
+		return ErrLoginIDMismatch
 	}
 
 	b.tokenPair = &loadedToken
@@ -170,8 +186,10 @@ func (b *Beatport) refreshToken() (*tokenPair, error) {
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
+	loginId := b.tokenPair.LoginID
 	b.tokenPair = response
 	b.tokenPair.IssuedAt = time.Now().Unix()
+	b.tokenPair.LoginID = loginId
 	b.cacheTokenPair()
 
 	return response, nil
@@ -202,6 +220,7 @@ func (b *Beatport) issueToken(code string) error {
 	}
 	b.tokenPair = response
 	b.tokenPair.IssuedAt = time.Now().Unix()
+	b.tokenPair.LoginID = generateLoginID(b.username, b.password)
 	err = b.cacheTokenPair()
 	if err != nil {
 		return err
