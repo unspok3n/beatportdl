@@ -24,7 +24,7 @@ type PlaylistItem struct {
 	Track    Track `json:"track"`
 }
 
-func (p *Playlist) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+func (p *Playlist) DirectoryName(n NamingPreferences) string {
 	var firstGenre string
 	var bpmRange string
 
@@ -40,14 +40,14 @@ func (p *Playlist) DirectoryName(template string, whitespace string, aLimit int,
 		"id":           strconv.Itoa(int(p.ID)),
 		"name":         SanitizeForPath(p.Name),
 		"first_genre":  SanitizeForPath(firstGenre),
-		"track_count":  strconv.Itoa(p.TrackCount),
+		"track_count":  NumberWithPadding(p.TrackCount, p.TrackCount, n.TrackNumberPadding),
 		"bpm_range":    bpmRange,
 		"length":       p.LengthMs.Display(),
 		"created_date": p.CreatedDate.Format("2006-01-02"),
 		"updated_date": p.UpdatedDate.Format("2006-01-02"),
 	}
-	directoryName := ParseTemplate(template, templateValues)
-	return SanitizePath(directoryName, whitespace)
+	directoryName := ParseTemplate(n.Template, templateValues)
+	return SanitizePath(directoryName, n.Whitespace)
 }
 
 func (b *Beatport) GetPlaylist(id int64) (*Playlist, error) {

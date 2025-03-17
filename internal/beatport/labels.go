@@ -15,7 +15,7 @@ type Label struct {
 	Updated time.Time `json:"updated"`
 }
 
-func (l *Label) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+func (l *Label) DirectoryName(n NamingPreferences) string {
 	templateValues := map[string]string{
 		"id":           strconv.Itoa(int(l.ID)),
 		"name":         SanitizeForPath(l.Name),
@@ -23,8 +23,8 @@ func (l *Label) DirectoryName(template string, whitespace string, aLimit int, aS
 		"created_date": l.Created.Format("2006-01-02"),
 		"updated_date": l.Updated.Format("2006-01-02"),
 	}
-	directoryName := ParseTemplate(template, templateValues)
-	return SanitizePath(directoryName, whitespace)
+	directoryName := ParseTemplate(n.Template, templateValues)
+	return SanitizePath(directoryName, n.Whitespace)
 }
 
 func (l *Label) StoreUrl() string {

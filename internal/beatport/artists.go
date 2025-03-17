@@ -15,14 +15,14 @@ type Artist struct {
 
 type Artists []Artist
 
-func (a *Artist) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+func (a *Artist) DirectoryName(n NamingPreferences) string {
 	templateValues := map[string]string{
 		"id":   strconv.Itoa(int(a.ID)),
 		"name": SanitizeForPath(a.Name),
 		"slug": a.Slug,
 	}
-	directoryName := ParseTemplate(template, templateValues)
-	return SanitizePath(directoryName, whitespace)
+	directoryName := ParseTemplate(n.Template, templateValues)
+	return SanitizePath(directoryName, n.Whitespace)
 }
 
 func (a *Artists) Display(limit int, shortForm string) string {

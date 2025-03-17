@@ -56,9 +56,9 @@ func (t *Track) SubgenreOrGenre() string {
 	return t.Genre.Name
 }
 
-func (t *Track) Filename(template string, whitespace string, aLimit int, aShortForm string, keySystem string) string {
-	artistsString := t.Artists.Display(aLimit, aShortForm)
-	remixersString := t.Remixers.Display(aLimit, aShortForm)
+func (t *Track) Filename(n NamingPreferences) string {
+	artistsString := t.Artists.Display(n.ArtistsLimit, n.ArtistsShortForm)
+	remixersString := t.Remixers.Display(n.ArtistsLimit, n.ArtistsShortForm)
 	subgenre := ""
 	if t.Subgenre != nil {
 		subgenre = t.Subgenre.Name
@@ -71,9 +71,9 @@ func (t *Track) Filename(template string, whitespace string, aLimit int, aShortF
 		"mix_name":            SanitizeForPath(t.MixName.String()),
 		"artists":             SanitizeForPath(artistsString),
 		"remixers":            SanitizeForPath(remixersString),
-		"number":              fmt.Sprintf("%02d", t.Number),
+		"number":              NumberWithPadding(t.Number, t.Release.TrackCount, n.TrackNumberPadding),
 		"length":              t.LengthMs.Display(),
-		"key":                 t.Key.Display(keySystem),
+		"key":                 t.Key.Display(n.KeySystem),
 		"bpm":                 strconv.Itoa(t.BPM),
 		"genre":               SanitizeForPath(t.Genre.Name),
 		"subgenre":            SanitizeForPath(subgenre),
@@ -82,8 +82,8 @@ func (t *Track) Filename(template string, whitespace string, aLimit int, aShortF
 		"isrc":                t.ISRC,
 		"label":               SanitizeForPath(t.Release.Label.Name),
 	}
-	fileName := ParseTemplate(template, templateValues)
-	return SanitizePath(fileName, whitespace)
+	fileName := ParseTemplate(n.Template, templateValues)
+	return SanitizePath(fileName, n.Whitespace)
 }
 
 func (b *Beatport) GetTrack(id int64) (*Track, error) {

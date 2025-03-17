@@ -24,6 +24,7 @@ type AppConfig struct {
 	SortByLabel             bool   `yaml:"sort_by_label,omitempty"`
 	ForceReleaseDirectories bool   `yaml:"force_release_directories,omitempty"`
 	TrackExists             string `yaml:"track_exists,omitempty"`
+	TrackNumberPadding      int    `yaml:"track_number_padding,omitempty"`
 
 	ReleaseDirectoryTemplate  string `yaml:"release_directory_template,omitempty"`
 	PlaylistDirectoryTemplate string `yaml:"playlist_directory_template,omitempty"`
@@ -88,6 +89,7 @@ func Parse(filePath string) (*AppConfig, error) {
 		ArtistsShortForm:          "VA",
 		KeySystem:                 "standard-short",
 		TrackExists:               "update",
+		TrackNumberPadding:        2,
 		FixTags:                   true,
 		ShowProgress:              true,
 		MaxGlobalWorkers:          15,
@@ -132,6 +134,10 @@ func Parse(filePath string) (*AppConfig, error) {
 
 	if !validator.PermittedValue(config.TrackExists, SupportedTrackExistsOptions...) {
 		return nil, fmt.Errorf("invalid track exists behavior")
+	}
+
+	if config.TrackNumberPadding > 10 || config.TrackNumberPadding < 0 {
+		return nil, fmt.Errorf("invalid track number padding")
 	}
 
 	return &config, nil

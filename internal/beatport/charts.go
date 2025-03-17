@@ -25,7 +25,7 @@ type ChartPerson struct {
 	OwnerSlug string `json:"owner_slug"`
 }
 
-func (c *Chart) DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string {
+func (c *Chart) DirectoryName(n NamingPreferences) string {
 	var firstGenre string
 	if len(c.Genres) > 0 {
 		firstGenre = c.Genres[0].Name
@@ -35,14 +35,14 @@ func (c *Chart) DirectoryName(template string, whitespace string, aLimit int, aS
 		"name":           SanitizeForPath(c.Name),
 		"slug":           c.Slug,
 		"first_genre":    SanitizeForPath(firstGenre),
-		"track_count":    strconv.Itoa(c.TrackCount),
+		"track_count":    NumberWithPadding(c.TrackCount, c.TrackCount, n.TrackNumberPadding),
 		"creator":        SanitizeForPath(c.Person.OwnerName),
 		"created_date":   c.AddDate.Format("2006-01-02"),
 		"published_date": c.PublishDate.Format("2006-01-02"),
 		"updated_date":   c.ChangeDate.Format("2006-01-02"),
 	}
-	directoryName := ParseTemplate(template, templateValues)
-	return SanitizePath(directoryName, whitespace)
+	directoryName := ParseTemplate(n.Template, templateValues)
+	return SanitizePath(directoryName, n.Whitespace)
 }
 
 func (b *Beatport) GetChart(id int64) (*Chart, error) {

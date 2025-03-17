@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -53,6 +54,15 @@ type Image struct {
 	ID         int64  `json:"id"`
 	URI        string `json:"uri"`
 	DynamicURI string `json:"dynamic_uri"`
+}
+
+type NamingPreferences struct {
+	Template           string
+	Whitespace         string
+	ArtistsLimit       int
+	ArtistsShortForm   string
+	TrackNumberPadding int
+	KeySystem          string
 }
 
 type Duration int
@@ -430,4 +440,11 @@ func SanitizePath(name string, whitespace string) string {
 	name = r.Replace(name)
 
 	return strings.Join(strings.Fields(name), " ")
+}
+
+func NumberWithPadding(value, total, padding int) string {
+	if padding == 0 {
+		padding = len(strconv.Itoa(total))
+	}
+	return fmt.Sprintf("%0*d", padding, value)
 }

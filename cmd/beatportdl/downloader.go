@@ -29,7 +29,7 @@ func (app *application) createDirectory(baseDir string, subDir ...string) (strin
 }
 
 type DownloadsDirectoryEntity interface {
-	DirectoryName(template string, whitespace string, aLimit int, aShortForm string) string
+	DirectoryName(n beatport.NamingPreferences) string
 }
 
 func (app *application) setupDownloadsDirectory(baseDir string, entity DownloadsDirectoryEntity) (string, error) {
@@ -38,41 +38,46 @@ func (app *application) setupDownloadsDirectory(baseDir string, entity Downloads
 		switch castedEntity := entity.(type) {
 		case *beatport.Release:
 			subDir = castedEntity.DirectoryName(
-				app.config.ReleaseDirectoryTemplate,
-				app.config.WhitespaceCharacter,
-				app.config.ArtistsLimit,
-				app.config.ArtistsShortForm,
+				beatport.NamingPreferences{
+					Template:           app.config.ReleaseDirectoryTemplate,
+					Whitespace:         app.config.WhitespaceCharacter,
+					ArtistsLimit:       app.config.ArtistsLimit,
+					ArtistsShortForm:   app.config.ArtistsShortForm,
+					TrackNumberPadding: app.config.TrackNumberPadding,
+				},
 			)
 			if app.config.SortByLabel && entity != nil {
 				baseDir = filepath.Join(baseDir, castedEntity.Label.Name)
 			}
 		case *beatport.Playlist:
 			subDir = castedEntity.DirectoryName(
-				app.config.PlaylistDirectoryTemplate,
-				app.config.WhitespaceCharacter,
-				0,
-				"",
+				beatport.NamingPreferences{
+					Template:           app.config.PlaylistDirectoryTemplate,
+					Whitespace:         app.config.WhitespaceCharacter,
+					TrackNumberPadding: app.config.TrackNumberPadding,
+				},
 			)
 		case *beatport.Chart:
 			subDir = castedEntity.DirectoryName(
-				app.config.ChartDirectoryTemplate,
-				app.config.WhitespaceCharacter,
-				0,
-				"",
+				beatport.NamingPreferences{
+					Template:           app.config.ChartDirectoryTemplate,
+					Whitespace:         app.config.WhitespaceCharacter,
+					TrackNumberPadding: app.config.TrackNumberPadding,
+				},
 			)
 		case *beatport.Label:
 			subDir = castedEntity.DirectoryName(
-				app.config.LabelDirectoryTemplate,
-				app.config.WhitespaceCharacter,
-				0,
-				"",
+				beatport.NamingPreferences{
+					Template:   app.config.LabelDirectoryTemplate,
+					Whitespace: app.config.WhitespaceCharacter,
+				},
 			)
 		case *beatport.Artist:
 			subDir = castedEntity.DirectoryName(
-				app.config.ArtistDirectoryTemplate,
-				app.config.WhitespaceCharacter,
-				0,
-				"",
+				beatport.NamingPreferences{
+					Template:   app.config.ArtistDirectoryTemplate,
+					Whitespace: app.config.WhitespaceCharacter,
+				},
 			)
 		}
 		baseDir = filepath.Join(baseDir, subDir)
@@ -155,11 +160,14 @@ func (app *application) saveTrack(track beatport.Track, directory string, qualit
 	}
 
 	fileName := track.Filename(
-		app.config.TrackFileTemplate,
-		app.config.WhitespaceCharacter,
-		app.config.ArtistsLimit,
-		app.config.ArtistsShortForm,
-		app.config.KeySystem,
+		beatport.NamingPreferences{
+			Template:           app.config.TrackFileTemplate,
+			Whitespace:         app.config.WhitespaceCharacter,
+			ArtistsLimit:       app.config.ArtistsLimit,
+			ArtistsShortForm:   app.config.ArtistsShortForm,
+			TrackNumberPadding: app.config.TrackNumberPadding,
+			KeySystem:          app.config.KeySystem,
+		},
 	)
 	filePath := fmt.Sprintf("%s/%s%s", directory, fileName, fileExtension)
 	if _, err := os.Stat(filePath); err == nil {
@@ -263,6 +271,7 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			app.config.ArtistsShortForm,
 		),
 		"track_number":              strconv.Itoa(track.Number),
+		"track_number_with_padding": beatport.NumberWithPadding(track.Number, track.Release.TrackCount, app.config.TrackNumberPadding),
 		"track_number_with_total":   fmt.Sprintf("%d/%d", track.Number, track.Release.TrackCount),
 		"track_genre":               track.Genre.Name,
 		"track_subgenre":            subgenre,
@@ -291,9 +300,12 @@ func (app *application) tagTrack(location string, track beatport.Track, coverPat
 			app.config.ArtistsLimit,
 			app.config.ArtistsShortForm,
 		),
-		"release_date":           track.Release.Date,
-		"release_year":           track.Release.Year(),
-		"release_track_count":    strconv.Itoa(track.Release.TrackCount),
+		"release_date":        track.Release.Date,
+		"release_year":        track.Release.Year(),
+		"release_track_count": strconv.Itoa(track.Release.TrackCount),
+		"release_track_count_with_padding": beatport.NumberWithPadding(
+			track.Release.TrackCount, track.Release.TrackCount, app.config.TrackNumberPadding,
+		),
 		"release_catalog_number": track.Release.CatalogNumber.String(),
 		"release_upc":            track.Release.UPC,
 		"release_label":          track.Release.Label.Name,
