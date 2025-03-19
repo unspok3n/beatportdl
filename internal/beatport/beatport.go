@@ -242,10 +242,10 @@ func (b *Beatport) issueToken(code string) error {
 func (b *Beatport) authorize(sessionId string) (string, error) {
 	b.headers["cookie"] = fmt.Sprintf("sessionid=%s", sessionId)
 	res, err := b.fetch("GET", authEndpoint, nil, "")
+	delete(b.headers, "cookie")
 	if err != nil {
 		return "", err
 	}
-	delete(b.headers, "cookie")
 	redirectUrl := res.Header.Get("Location")
 	parsedUrl, err := url.Parse(redirectUrl)
 	if err != nil {
