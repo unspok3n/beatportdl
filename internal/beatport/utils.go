@@ -1,111 +1,89 @@
 package beatport
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-type LinkType string
-
-var (
-	TrackLink    LinkType = "tracks"
-	ReleaseLink  LinkType = "releases"
-	PlaylistLink LinkType = "playlists"
-	ChartLink    LinkType = "charts"
-	LabelLink    LinkType = "labels"
-	ArtistLink   LinkType = "artists"
-)
-
-type Link struct {
-	Type   LinkType
-	ID     int64
-	Params string
+type SanitizedString string
+type Duration int
+type NamingPreferences struct {
+	Template           string
+	Whitespace         string
+	ArtistsLimit       int
+	ArtistsShortForm   string
+	TrackNumberPadding int
+	KeySystem          string
 }
 
-var (
-	ErrInvalidUrl = errors.New("invalid url")
-)
+func (d *Duration) Display() string {
+	seconds := *d / 1000
+	hours := seconds / 3600
+	minutes := (seconds % 3600) / 60
+	remainingSeconds := seconds % 60
+	if hours > 0 {
+		return fmt.Sprintf("%02d-%02d-%02d", hours, minutes, remainingSeconds)
+	}
+	return fmt.Sprintf("%02d-%02d", minutes, remainingSeconds)
+}
 
-func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
-	u, err := url.Parse(inputURL)
-	if err != nil {
-		return nil, err
+func (s *SanitizedString) UnmarshalJSON(data []byte) error {
+	rawValue := string(bytes.Trim(data, `"`))
+	r := strings.NewReplacer(
+		"\\n", "",
+		"\\r", "",
+		"\\t", "",
+	)
+	sanitized := r.Replace(rawValue)
+	*s = SanitizedString(strings.Join(strings.Fields(sanitized), " "))
+	return nil
+}
+
+func (s *SanitizedString) String() string {
+	return string(*s)
+}
+
+func SanitizeForPath(s string) string {
+	r := strings.NewReplacer(
+		"\\", "",
+		"/", "",
+	)
+	return strings.Join(strings.Fields(r.Replace(s)), " ")
+}
+
+func SanitizePath(name string, whitespace string) string {
+	if len(name) > 250 {
+		name = name[:250]
 	}
 
-	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
-	segmentsLength := len(segments)
-	var link Link
-
-	if segmentsLength == 0 {
-		return nil, ErrInvalidUrl
+	oldnew := []string{
+		"<", "",
+		">", "",
+		":", "",
+		"\"", "",
+		"|", "",
+		"?", "",
+		"*", "",
 	}
 
-	if segmentsLength > 1 && len(segments[0]) == 2 {
-		segments = segments[1:]
-		segmentsLength--
-
-		if segments[0] == "catalog" {
-			segments = segments[1:]
-			segmentsLength--
-		}
+	if whitespace != "" {
+		oldnew = append(oldnew, " ", whitespace)
 	}
 
-	var idSegment int
+	r := strings.NewReplacer(oldnew...)
+	name = r.Replace(name)
 
-	switch segments[0] {
-	case "track":
-		idSegment = 2
-		link.Type = TrackLink
-	case "release":
-		idSegment = 2
-		link.Type = ReleaseLink
-	case "library":
-		switch segments[1] {
-		case "playlists":
-			idSegment = 2
-			link.Type = PlaylistLink
-		default:
-			return nil, fmt.Errorf("invalid link type: %s/%s", segments[0], segments[1])
-		}
-	case "playlists":
-		idSegment = 2
-		link.Type = PlaylistLink
-	case "chart":
-		idSegment = 2
-		link.Type = ChartLink
-	case "label":
-		idSegment = 2
-		link.Type = LabelLink
-	case "artist":
-		idSegment = 2
-		link.Type = ArtistLink
+	return strings.Join(strings.Fields(name), " ")
+}
 
-	case "tracks":
-		idSegment = 1
-		link.Type = TrackLink
-	case "releases":
-		idSegment = 1
-		link.Type = ReleaseLink
-	default:
-		return nil, ErrInvalidUrl
+func NumberWithPadding(value, total, padding int) string {
+	if padding == 0 {
+		padding = len(strconv.Itoa(total))
 	}
-
-	if idSegment+1 > segmentsLength {
-		return nil, ErrInvalidUrl
-	}
-
-	link.ID, err = strconv.ParseInt(segments[idSegment], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid id: %v", err)
-	}
-
-	link.Params = u.RawQuery
-
-	return &link, nil
+	return fmt.Sprintf("%0*d", padding, value)
 }
 
 func ParseTemplate(template string, values map[string]string) string {
@@ -118,4 +96,15 @@ func ParseTemplate(template string, values map[string]string) string {
 		return placeholder
 	})
 	return result
+}
+
+func storeUrl(id int64, entity, slug string, store Store) string {
+	var domain string
+	switch store {
+	default:
+		domain = "beatport.com"
+	case StoreBeatsource:
+		domain = "beatsource.com"
+	}
+	return fmt.Sprintf("https://www.%s/%s/%s/%d", domain, entity, slug, id)
 }

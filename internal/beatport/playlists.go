@@ -83,5 +83,8 @@ func (b *Beatport) GetPlaylistItems(id int64, page int, params string) (*Paginat
 	if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
 		return nil, err
 	}
+	for i := range response.Results {
+		response.Results[i].Track.Store = b.store
+	}
 	return &response, nil
 }

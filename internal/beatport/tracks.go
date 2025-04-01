@@ -25,6 +25,7 @@ type Track struct {
 	PublishDate string          `json:"publish_date"`
 	Release     Release         `json:"release"`
 	URL         string          `json:"url"`
+	Store       Store           `json:"store"`
 }
 
 type TrackDownload struct {
@@ -39,7 +40,7 @@ type TrackStream struct {
 }
 
 func (t *Track) StoreUrl() string {
-	return fmt.Sprintf("https://www.beatport.com/track/%s/%d", t.Slug, t.ID)
+	return storeUrl(t.ID, "track", t.Slug, t.Store)
 }
 
 func (t *Track) GenreWithSubgenre(separator string) string {
@@ -101,6 +102,7 @@ func (b *Beatport) GetTrack(id int64) (*Track, error) {
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
+	response.Store = b.store
 	return response, nil
 }
 

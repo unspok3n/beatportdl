@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"unspok3n/beatportdl/config"
+	"unspok3n/beatportdl/internal/beatport"
 )
 
 func Setup() (cfg *config.AppConfig, cachePath string, err error) {
@@ -86,7 +88,7 @@ func Setup() (cfg *config.AppConfig, cachePath string, err error) {
 func (app *application) mainPrompt() {
 	fmt.Print("Enter url or search query: ")
 	input := GetLine()
-	if strings.HasPrefix(input, "https://www.beatport.com") {
+	if strings.HasPrefix(input, "https://www.beatport.com") || strings.HasPrefix(input, "https://www.beatsource.com") {
 		app.urls = append(app.urls, input)
 	} else {
 		app.search(input)
@@ -94,7 +96,17 @@ func (app *application) mainPrompt() {
 }
 
 func (app *application) search(input string) {
-	results, err := app.bp.Search(input)
+	var storeTag string
+	var inst *beatport.Beatport
+	storeTag, input = extractStoreTag(input)
+	switch storeTag {
+	default:
+		inst = app.bp
+	case "beatsource":
+		inst = app.bs
+	}
+
+	results, err := inst.Search(input)
 	if err != nil {
 		app.FatalError("beatport", err)
 	}
@@ -156,6 +168,19 @@ func (app *application) search(input string) {
 	}
 }
 
+func extractStoreTag(query string) (store, trimmedQuery string) {
+	re := regexp.MustCompile(`@\w+`)
+	matches := re.FindAllString(query, -1)
+	if len(matches) > 0 {
+		store = strings.TrimPrefix(matches[0], "@")
+		trimmedQuery = re.ReplaceAllString(query, "")
+		trimmedQuery = strings.TrimSpace(trimmedQuery)
+	} else {
+		trimmedQuery = query
+	}
+	return store, trimmedQuery
+}
+
 func (app *application) parseTextFile(path string) {
 	file, err := os.Open(path)
 	defer file.Close()
@@ -171,5 +196,6 @@ func (app *application) parseTextFile(path string) {
 }
 
 var (
-	ErrUnsupportedLinkType = errors.New("unsupported link type")
+	ErrUnsupportedLinkType  = errors.New("unsupported link type")
+	ErrUnsupportedLinkStore = errors.New("unsupported link store")
 )

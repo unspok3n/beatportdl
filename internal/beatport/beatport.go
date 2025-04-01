@@ -2,41 +2,27 @@ package beatport
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"net/http"
 	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
 	"time"
 )
 
+const (
+	beatportBaseUrl   = "https://api.beatport.com/v4"
+	beatsourceBaseUrl = "https://api.beatsource.com/v4"
+)
+
 type Beatport struct {
-	username      string
-	password      string
-	tokenPair     *tokenPair
-	cacheFilePath string
-	client        *http.Client
-	headers       map[string]string
-	mutex         sync.RWMutex
+	store   Store
+	client  *http.Client
+	headers map[string]string
+	auth    *Auth
 }
 
-type tokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
-	TokenType    string `json:"token_type"`
-	Scope        string `json:"scope"`
-	LoginID      string `json:"login_id"`
-	IssuedAt     int64  `json:"issued_at"`
-}
-
-type Error struct {
+type FetcherError struct {
 	Detail *string `json:"detail,omitempty"`
 	Error  *string `json:"error,omitempty"`
 }
@@ -50,67 +36,7 @@ type Paginated[T any] struct {
 	Results  []T     `json:"results"`
 }
 
-type Image struct {
-	ID         int64  `json:"id"`
-	URI        string `json:"uri"`
-	DynamicURI string `json:"dynamic_uri"`
-}
-
-type NamingPreferences struct {
-	Template           string
-	Whitespace         string
-	ArtistsLimit       int
-	ArtistsShortForm   string
-	TrackNumberPadding int
-	KeySystem          string
-}
-
-type Duration int
-
-func (d *Duration) Display() string {
-	seconds := *d / 1000
-	hours := seconds / 3600
-	minutes := (seconds % 3600) / 60
-	remainingSeconds := seconds % 60
-	if hours > 0 {
-		return fmt.Sprintf("%02d-%02d-%02d", hours, minutes, remainingSeconds)
-	}
-	return fmt.Sprintf("%02d-%02d", minutes, remainingSeconds)
-}
-
-type SanitizedString string
-
-func (s *SanitizedString) UnmarshalJSON(data []byte) error {
-	rawValue := string(bytes.Trim(data, `"`))
-	r := strings.NewReplacer(
-		"\\n", "",
-		"\\r", "",
-		"\\t", "",
-	)
-	sanitized := r.Replace(rawValue)
-	*s = SanitizedString(strings.Join(strings.Fields(sanitized), " "))
-	return nil
-}
-
-func (s *SanitizedString) String() string {
-	return string(*s)
-}
-
-const (
-	clientId      = "ryZ8LuyQVPqbK2mBX2Hwt4qSMtnWuTYSqBPO92yQ"
-	baseUrl       = "https://api.beatport.com/v4"
-	tokenEndpoint = "/auth/o/token/"
-	authEndpoint  = "/auth/o/authorize/?client_id=" + clientId + "&response_type=code"
-	loginEndpoint = "/auth/login/"
-)
-
-var (
-	ErrInvalidAuthorizationCode = errors.New("invalid authorization code")
-	ErrInvalidSessionCookie     = errors.New("invalid session cookie")
-	ErrLoginIDMismatch          = errors.New("login id does not match")
-)
-
-func New(username string, password string, cacheFilePath string, proxyUrl string) *Beatport {
+func New(store Store, proxyUrl string, auth *Auth) *Beatport {
 	transport := &http.Transport{}
 	if proxyUrl != "" {
 		proxyURL, _ := url.Parse(proxyUrl)
@@ -123,10 +49,9 @@ func New(username string, password string, cacheFilePath string, proxyUrl string
 		"cache-control":   "max-age=0",
 		"user-agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
 	}
-	bp := Beatport{
-		username:      username,
-		password:      password,
-		cacheFilePath: cacheFilePath,
+	f := Beatport{
+		store: store,
+		auth:  auth,
 		client: &http.Client{
 			Timeout:   time.Duration(40) * time.Second,
 			Transport: transport,
@@ -136,201 +61,15 @@ func New(username string, password string, cacheFilePath string, proxyUrl string
 		},
 		headers: headers,
 	}
-	return &bp
-}
-
-func generateLoginID(username, password string) string {
-	hash := fnv.New64a()
-	data := fmt.Sprintf("%s:%s", username, password)
-	hash.Write([]byte(data))
-	hashBytes := hash.Sum(nil)
-	return hex.EncodeToString(hashBytes)
-}
-
-func (b *Beatport) LoadCachedTokenPair() error {
-	data, err := os.ReadFile(b.cacheFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to read token file: %w", err)
-	}
-
-	var loadedToken tokenPair
-	if err := json.Unmarshal(data, &loadedToken); err != nil {
-		return fmt.Errorf("failed to unmarshal token data: %w", err)
-	}
-
-	if loadedToken.LoginID != generateLoginID(b.username, b.password) {
-		return ErrLoginIDMismatch
-	}
-
-	b.tokenPair = &loadedToken
-
-	return nil
-}
-
-func (b *Beatport) cacheTokenPair() error {
-	data, err := json.MarshalIndent(b.tokenPair, "", " ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal tokenPair: %w", err)
-	}
-
-	if err := os.WriteFile(b.cacheFilePath, data, 0600); err != nil {
-		return fmt.Errorf("failed to write token to cache: %w", err)
-	}
-
-	return nil
-}
-
-func (b *Beatport) refreshToken() (*tokenPair, error) {
-	payload := map[string]string{
-		"client_id":     clientId,
-		"refresh_token": b.tokenPair.RefreshToken,
-		"grant_type":    "refresh_token",
-	}
-
-	res, err := b.fetch("POST", tokenEndpoint, payload, "application/x-www-form-urlencoded")
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	response := &tokenPair{}
-	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
-		return nil, err
-	}
-	loginId := b.tokenPair.LoginID
-	b.tokenPair = response
-	b.tokenPair.IssuedAt = time.Now().Unix()
-	b.tokenPair.LoginID = loginId
-	b.cacheTokenPair()
-
-	return response, nil
-}
-
-func (b *Beatport) issueToken(code string) error {
-	payload := map[string]string{
-		"client_id": clientId,
-	}
-
-	if code != "" {
-		payload["grant_type"] = "authorization_code"
-		payload["code"] = code
-	} else {
-		payload["grant_type"] = "password"
-		payload["username"] = b.username
-		payload["password"] = b.password
-	}
-
-	res, err := b.fetch("POST", tokenEndpoint, payload, "application/x-www-form-urlencoded")
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	response := &tokenPair{}
-	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
-		return err
-	}
-	b.tokenPair = response
-	b.tokenPair.IssuedAt = time.Now().Unix()
-	b.tokenPair.LoginID = generateLoginID(b.username, b.password)
-	err = b.cacheTokenPair()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (b *Beatport) authorize(sessionId string) (string, error) {
-	b.headers["cookie"] = fmt.Sprintf("sessionid=%s", sessionId)
-	res, err := b.fetch("GET", authEndpoint, nil, "")
-	delete(b.headers, "cookie")
-	if err != nil {
-		return "", err
-	}
-	redirectUrl := res.Header.Get("Location")
-	parsedUrl, err := url.Parse(redirectUrl)
-	if err != nil {
-		return "", err
-	}
-	query, _ := url.ParseQuery(parsedUrl.RawQuery)
-	code := query.Get("code")
-	if code != "" {
-		return code, nil
-	}
-	return "", ErrInvalidAuthorizationCode
-}
-
-func (b *Beatport) login() (string, error) {
-	payload := map[string]string{
-		"username": b.username,
-		"password": b.password,
-	}
-
-	res, err := b.fetch("POST", loginEndpoint, payload, "application/json")
-	if err != nil {
-		return "", err
-	}
-	cookies := res.Cookies()
-	for _, cookie := range cookies {
-		if cookie.Name == "sessionid" {
-			return cookie.Value, nil
-		}
-	}
-	return "", ErrInvalidSessionCookie
-}
-
-func (b *Beatport) NewTokenPair() error {
-	fmt.Println("Logging in")
-	sessionId, err := b.login()
-	if err != nil {
-		return fmt.Errorf("login: %v", err)
-	}
-	authorizationCode, err := b.authorize(sessionId)
-	if err != nil {
-		return fmt.Errorf("authorize: %v", err)
-	}
-	if err := b.issueToken(authorizationCode); err != nil {
-		return fmt.Errorf("issue token: %v", err)
-	}
-	return nil
-}
-
-func encodeFormPayload(payload interface{}) (url.Values, error) {
-	values := url.Values{}
-
-	switch p := payload.(type) {
-	case map[string]string:
-		for key, value := range p {
-			values.Set(key, value)
-		}
-	case url.Values:
-		values = p
-	default:
-		return nil, errors.New("invalid payload")
-	}
-
-	return values, nil
+	return &f
 }
 
 func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentType string) (*http.Response, error) {
 	var body bytes.Buffer
 
 	if endpoint != tokenEndpoint && endpoint != authEndpoint && endpoint != loginEndpoint {
-		currentTime := time.Now().Unix()
-
-		b.mutex.RLock()
-		tokenExpirationTime := b.tokenPair.IssuedAt + b.tokenPair.ExpiresIn
-		b.mutex.RUnlock()
-		if currentTime+300 >= tokenExpirationTime {
-			b.mutex.Lock()
-			fmt.Println("Refreshing token")
-			_, err := b.refreshToken()
-			if err != nil {
-				if err := b.NewTokenPair(); err != nil {
-					b.mutex.Unlock()
-					return nil, fmt.Errorf("invalid token and authorization error: %w", err)
-				}
-			}
-			b.mutex.Unlock()
+		if err := b.auth.Check(b); err != nil {
+			return nil, err
 		}
 	}
 
@@ -351,6 +90,14 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 		}
 	}
 
+	var baseUrl string
+	switch b.store {
+	default:
+		baseUrl = beatportBaseUrl
+	case StoreBeatsource:
+		baseUrl = beatsourceBaseUrl
+	}
+
 	req, err := http.NewRequest(method, baseUrl+endpoint, &body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -363,8 +110,9 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 	if payload != nil {
 		req.Header.Set("Content-Type", contentType)
 	}
-	if b.tokenPair != nil {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", b.tokenPair.AccessToken))
+
+	if b.auth.tokenPair != nil {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", b.auth.tokenPair.AccessToken))
 	}
 
 	resp, err := b.client.Do(req)
@@ -374,13 +122,11 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
 		if resp.StatusCode == http.StatusUnauthorized && endpoint != tokenEndpoint && endpoint != authEndpoint && endpoint != loginEndpoint {
-			b.mutex.Lock()
-			b.tokenPair.IssuedAt = 0
-			b.mutex.Unlock()
+			b.auth.Invalidate()
 			return b.fetch(method, endpoint, payload, contentType)
 		}
 		defer resp.Body.Close()
-		response := &Error{}
+		response := &FetcherError{}
 		if err = json.NewDecoder(resp.Body).Decode(response); err == nil {
 			detail := "Unknown error"
 			if response.Detail != nil {
@@ -400,51 +146,19 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 	return resp, nil
 }
 
-func (i *Image) FormattedUrl(size string) string {
-	return strings.Replace(
-		i.DynamicURI,
-		"{w}x{h}",
-		size,
-		-1,
-	)
-}
+func encodeFormPayload(payload interface{}) (url.Values, error) {
+	values := url.Values{}
 
-func SanitizeForPath(s string) string {
-	r := strings.NewReplacer(
-		"\\", "",
-		"/", "",
-	)
-	return strings.Join(strings.Fields(r.Replace(s)), " ")
-}
-
-func SanitizePath(name string, whitespace string) string {
-	if len(name) > 250 {
-		name = name[:250]
+	switch p := payload.(type) {
+	case map[string]string:
+		for key, value := range p {
+			values.Set(key, value)
+		}
+	case url.Values:
+		values = p
+	default:
+		return nil, errors.New("invalid payload")
 	}
 
-	oldnew := []string{
-		"<", "",
-		">", "",
-		":", "",
-		"\"", "",
-		"|", "",
-		"?", "",
-		"*", "",
-	}
-
-	if whitespace != "" {
-		oldnew = append(oldnew, " ", whitespace)
-	}
-
-	r := strings.NewReplacer(oldnew...)
-	name = r.Replace(name)
-
-	return strings.Join(strings.Fields(name), " ")
-}
-
-func NumberWithPadding(value, total, padding int) string {
-	if padding == 0 {
-		padding = len(strconv.Itoa(total))
-	}
-	return fmt.Sprintf("%0*d", padding, value)
+	return values, nil
 }

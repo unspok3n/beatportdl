@@ -13,6 +13,7 @@ type Label struct {
 	Slug    string    `json:"slug"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
+	Store   Store     `json:"store"`
 }
 
 func (l *Label) DirectoryName(n NamingPreferences) string {
@@ -28,7 +29,7 @@ func (l *Label) DirectoryName(n NamingPreferences) string {
 }
 
 func (l *Label) StoreUrl() string {
-	return fmt.Sprintf("https://www.beatport.com/label/%s/%d", l.Slug, l.ID)
+	return storeUrl(l.ID, "label", l.Slug, l.Store)
 }
 
 func (b *Beatport) GetLabel(id int64) (*Label, error) {
@@ -46,6 +47,7 @@ func (b *Beatport) GetLabel(id int64) (*Label, error) {
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
+	response.Store = b.store
 	return response, nil
 }
 
@@ -63,6 +65,9 @@ func (b *Beatport) GetLabelReleases(id int64, page int, params string) (*Paginat
 	var response Paginated[Release]
 	if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
 		return nil, err
+	}
+	for i := range response.Results {
+		response.Results[i].Store = b.store
 	}
 	return &response, nil
 }

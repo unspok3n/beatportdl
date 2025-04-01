@@ -23,6 +23,7 @@ type application struct {
 	logFile          *os.File
 	logWriter        io.Writer
 	bp               *beatport.Beatport
+	bs               *beatport.Beatport
 	wg               sync.WaitGroup
 	downloadSem      chan struct{}
 	globalSem        chan struct{}
@@ -60,20 +61,18 @@ func main() {
 		defer f.Close()
 	}
 
-	bp := beatport.New(
-		cfg.Username,
-		cfg.Password,
-		cachePath,
-		cfg.Proxy,
-	)
+	auth := beatport.NewAuth(cfg.Username, cfg.Password, cachePath)
+	bp := beatport.New(beatport.StoreBeatport, cfg.Proxy, auth)
+	bs := beatport.New(beatport.StoreBeatsource, cfg.Proxy, auth)
 
-	if err := bp.LoadCachedTokenPair(); err != nil {
-		if err := bp.NewTokenPair(); err != nil {
+	if err := auth.LoadCache(); err != nil {
+		if err := auth.Init(bp); err != nil {
 			app.FatalError("beatport", err)
 		}
 	}
 
 	app.bp = bp
+	app.bs = bs
 
 	flag.Parse()
 	inputArgs := flag.Args()
