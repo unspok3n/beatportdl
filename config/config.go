@@ -3,10 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"os"
 	"os/exec"
+	"path"
 	"unspok3n/beatportdl/internal/validator"
+
+	"gopkg.in/yaml.v2"
 )
 
 type AppConfig struct {
@@ -144,11 +146,17 @@ func Parse(filePath string) (*AppConfig, error) {
 }
 
 func (c *AppConfig) Save(filePath string) error {
+	err := os.MkdirAll(path.Dir(filePath), 0700)
+	if err != nil {
+		return fmt.Errorf("could not create folder for configuration file: %w", err)
+	}
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
 	defer file.Close()
+
 	encoder := yaml.NewEncoder(file)
 	if err := encoder.Encode(&c); err != nil {
 		return fmt.Errorf("encode config: %w", err)

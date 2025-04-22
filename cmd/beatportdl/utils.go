@@ -4,16 +4,19 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/vbauerster/mpb/v8"
-	"github.com/vbauerster/mpb/v8/decor"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/fatih/color"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
 func (app *application) globalWorker(fn func()) {
@@ -197,28 +200,40 @@ func WorkingDirFilePath(fileName string) (string, error) {
 	return filePathCurrent, nil
 }
 
-func FindFile(fileName string) (string, error) {
-	filePathExec, err := ExecutableDirFilePath(fileName)
-	if err != nil {
-		return "", fmt.Errorf("failed to get executable path: %v", err)
-	}
-
-	_, err = os.Stat(filePathExec)
-	if err == nil {
-		return filePathExec, nil
-	}
-
+func FindFile(fileName string) (string, bool, error) {
 	filePathCurrent, err := WorkingDirFilePath(fileName)
 	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %v", err)
+		return "", false, err
 	}
 
-	_, err = os.Stat(filePathCurrent)
-	if err == nil {
-		return filePathCurrent, nil
+	filePathExec, err := ExecutableDirFilePath(fileName)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to get executable path: %v", err)
 	}
 
-	return "", fmt.Errorf("%s not found", fileName)
+	configFilePaths := []string{
+		filePathCurrent,
+		filePathExec,
+	}
+
+	if runtime.GOOS == "linux" {
+		if xdgCfgHome, exists := os.LookupEnv("XDG_CONFIG_HOME"); exists {
+			configFilePaths = append(configFilePaths, path.Join(xdgCfgHome, "beatportdl", fileName))
+		} else {
+			configFilePaths = append(configFilePaths, path.Join(os.Getenv("HOME"), ".config", "beatportdl", fileName))
+		}
+	}
+
+	for _, configFilePath := range configFilePaths {
+		_, err = os.Stat(configFilePath)
+		if err == nil {
+			return configFilePath, true, nil
+		}
+	}
+
+	// last entry in list is default
+	defaultFilePath := configFilePaths[len(configFilePaths)-1]
+	return defaultFilePath, false, nil
 }
 
 func CreateDirectory(directory string) error {

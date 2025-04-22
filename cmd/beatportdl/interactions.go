@@ -13,13 +13,13 @@ import (
 )
 
 func Setup() (cfg *config.AppConfig, cachePath string, err error) {
-	configFilePath, err := FindFile(configFilename)
+	configFilePath, exists, err := FindFile(configFilename)
 	if err != nil {
-		fmt.Println("Config file not found, creating a new one")
-		configFilePath, err = ExecutableDirFilePath(configFilename)
-		if err != nil {
-			return nil, configFilePath, fmt.Errorf("get executable path: %w", err)
-		}
+		return nil, "", err
+	}
+
+	if !exists {
+		fmt.Println("Config file not found, creating a new one:", configFilePath)
 
 		fmt.Print("Username: ")
 		username := GetLine()
