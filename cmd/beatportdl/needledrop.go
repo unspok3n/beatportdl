@@ -6,9 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/grafov/m3u8"
-	"github.com/vbauerster/mpb/v8"
 	"io"
 	"net/http"
 	"net/url"
@@ -18,6 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/grafov/m3u8"
+	"github.com/vbauerster/mpb/v8"
 )
 
 type StreamKey struct {
@@ -105,24 +106,28 @@ func (app *application) downloadSegments(path string, segmentUrls []string, key 
 	}
 
 	for _, segmentUrl := range segmentUrls {
-		req, err := http.Get(segmentUrl)
-		if err != nil {
-			return "", err
-		}
-		defer req.Body.Close()
-		if req.StatusCode != http.StatusOK {
-			return "", errors.New(req.Status)
-		}
-		segBytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			return "", err
-		}
-		decSegBytes, err := decryptSegment(segBytes, key)
-		if err != nil {
-			return "", err
-		}
-		_, err = file.Write(decSegBytes)
-		if err != nil {
+		if err := func() error {
+			resp, err := http.Get(segmentUrl)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return errors.New(resp.Status)
+			}
+			segBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			decSegBytes, err := decryptSegment(segBytes, key)
+			if err != nil {
+				return err
+			}
+			if _, err := file.Write(decSegBytes); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
 			return "", err
 		}
 		if bar != nil {
