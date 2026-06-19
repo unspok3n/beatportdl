@@ -19,6 +19,34 @@ type NamingPreferences struct {
 	KeySystem          string
 }
 
+// These regexps and replacers are immutable and reused on hot paths
+// (filename and directory templating, JSON unmarshalling), so they are
+// compiled once at package initialization instead of on every call.
+var (
+	templatePlaceholderRegexp = regexp.MustCompile(`\{(\w+)}`)
+
+	sanitizedStringReplacer = strings.NewReplacer(
+		"\\n", "",
+		"\\r", "",
+		"\\t", "",
+	)
+
+	sanitizeForPathReplacer = strings.NewReplacer(
+		"\\", "",
+		"/", "",
+	)
+
+	sanitizePathReplacer = strings.NewReplacer(
+		"<", "",
+		">", "",
+		":", "",
+		"\"", "",
+		"|", "",
+		"?", "",
+		"*", "",
+	)
+)
+
 func (d *Duration) Display() string {
 	seconds := *d / 1000
 	hours := seconds / 3600
@@ -32,12 +60,7 @@ func (d *Duration) Display() string {
 
 func (s *SanitizedString) UnmarshalJSON(data []byte) error {
 	rawValue := string(bytes.Trim(data, `"`))
-	r := strings.NewReplacer(
-		"\\n", "",
-		"\\r", "",
-		"\\t", "",
-	)
-	sanitized := r.Replace(rawValue)
+	sanitized := sanitizedStringReplacer.Replace(rawValue)
 	*s = SanitizedString(strings.Join(strings.Fields(sanitized), " "))
 	return nil
 }
@@ -47,11 +70,7 @@ func (s *SanitizedString) String() string {
 }
 
 func SanitizeForPath(s string) string {
-	r := strings.NewReplacer(
-		"\\", "",
-		"/", "",
-	)
-	return strings.Join(strings.Fields(r.Replace(s)), " ")
+	return strings.Join(strings.Fields(sanitizeForPathReplacer.Replace(s)), " ")
 }
 
 func SanitizePath(name string, whitespace string) string {
@@ -59,22 +78,10 @@ func SanitizePath(name string, whitespace string) string {
 		name = name[:250]
 	}
 
-	oldnew := []string{
-		"<", "",
-		">", "",
-		":", "",
-		"\"", "",
-		"|", "",
-		"?", "",
-		"*", "",
-	}
-
+	name = sanitizePathReplacer.Replace(name)
 	if whitespace != "" {
-		oldnew = append(oldnew, " ", whitespace)
+		name = strings.ReplaceAll(name, " ", whitespace)
 	}
-
-	r := strings.NewReplacer(oldnew...)
-	name = r.Replace(name)
 
 	return strings.Join(strings.Fields(name), " ")
 }
@@ -87,8 +94,7 @@ func NumberWithPadding(value, total, padding int) string {
 }
 
 func ParseTemplate(template string, values map[string]string) string {
-	re := regexp.MustCompile(`\{(\w+)}`)
-	result := re.ReplaceAllStringFunc(template, func(placeholder string) string {
+	result := templatePlaceholderRegexp.ReplaceAllStringFunc(template, func(placeholder string) string {
 		key := strings.Trim(placeholder, "{}")
 		if value, found := values[key]; found {
 			return value
