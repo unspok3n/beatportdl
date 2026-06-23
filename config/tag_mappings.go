@@ -85,7 +85,7 @@ var (
 			"track_number":  "TRACKNUMBER",
 			"track_genre":   "GENRE",
 			"track_key":     "KEY",
-			"track_bpm":     "BPM",
+			"track_bpm":     "BPM_raw",
 			"track_isrc":    "ISRC",
 
 			"release_name":           "ALBUM",
