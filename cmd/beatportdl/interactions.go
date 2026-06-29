@@ -91,8 +91,10 @@ func (app *application) search(input string) {
 	}
 	trackResultsLen := len(results.Tracks)
 	releasesResultsLen := len(results.Releases)
+	labelsResultsLen := len(results.Labels)
+	totalResultsLen := trackResultsLen + releasesResultsLen + labelsResultsLen
 
-	if trackResultsLen+releasesResultsLen == 0 {
+	if totalResultsLen == 0 {
 		fmt.Println("No results found")
 		return
 	}
@@ -102,47 +104,52 @@ func (app *application) search(input string) {
 	for i, track := range results.Tracks {
 		fmt.Printf(
 			"%2d. %s - %s (%s) [%s]\n", i+1,
-			track.Artists.Display(
-				app.config.ArtistsLimit,
-				app.config.ArtistsShortForm,
-			),
-			track.Name.String(),
-			track.MixName.String(),
-			track.Length,
+			track.Artists.Display(app.config.ArtistsLimit, app.config.ArtistsShortForm),
+			track.Name.String(), track.MixName.String(), track.Length,
 		)
 	}
+	lastTrackNum := trackResultsLen
+
 	fmt.Println("\n[ Releases ]")
-	indexOffset := trackResultsLen + 1
 	for i, release := range results.Releases {
 		fmt.Printf(
-			"%2d. %s - %s [%s]\n", i+indexOffset,
-			release.Artists.Display(
-				app.config.ArtistsLimit,
-				app.config.ArtistsShortForm,
-			),
-			release.Name.String(),
-			release.Label.Name,
+			"%2d. %s - %s [%s]\n", i+lastTrackNum+1,
+			release.Artists.Display(app.config.ArtistsLimit, app.config.ArtistsShortForm),
+			release.Name.String(), release.Label.Name,
 		)
 	}
+	lastReleaseNum := lastTrackNum + releasesResultsLen
+
+	fmt.Println("\n[ Labels ]")
+	for i, label := range results.Labels {
+		fmt.Printf("%2d. %s\n", i+lastReleaseNum+1, label.Name)
+	}
+	lastLabelNum := lastReleaseNum + labelsResultsLen
+
 	fmt.Print("Enter the result number(s): ")
 	input = GetLine()
 	requestedResults := strings.Split(input, " ")
+
 	for _, result := range requestedResults {
-		resultInt, err := strconv.Atoi(result)
-		if err != nil {
+		nRes, err := strconv.Atoi(result)
+		if err != nil || nRes <= 0 || nRes > totalResultsLen {
 			fmt.Printf("invalid result number: %s\n", result)
 			continue
 		}
 
-		if resultInt > releasesResultsLen+trackResultsLen || resultInt == 0 {
-			fmt.Printf("invalid result number: %d\n", resultInt)
+		if nRes <= lastTrackNum {
+			app.urls = append(app.urls, results.Tracks[nRes-1].URL)
 			continue
 		}
 
-		if resultInt >= indexOffset {
-			app.urls = append(app.urls, results.Releases[resultInt-indexOffset].URL)
-		} else {
-			app.urls = append(app.urls, results.Tracks[resultInt-1].URL)
+		if nRes <= lastReleaseNum {
+			app.urls = append(app.urls, results.Releases[nRes-1-lastTrackNum].URL)
+			continue
+		}
+
+		if nRes <= lastLabelNum {
+			app.urls = append(app.urls, results.Labels[nRes-1-lastReleaseNum].StoreUrl())
+			continue
 		}
 	}
 }

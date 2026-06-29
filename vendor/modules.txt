@@ -42,3 +42,6 @@ golang.org/x/sys/windows
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
+# resenje.org/singleflight v0.4.3
+## explicit; go 1.18
+resenje.org/singleflight

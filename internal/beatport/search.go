@@ -9,6 +9,7 @@ import (
 type SearchResults struct {
 	Tracks   []Track   `json:"tracks"`
 	Releases []Release `json:"releases"`
+	Labels   []Label   `json:"labels"`
 }
 
 func (b *Beatport) Search(query string) (*SearchResults, error) {

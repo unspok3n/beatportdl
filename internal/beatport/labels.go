@@ -66,3 +66,21 @@ func (b *Beatport) GetLabelReleases(id int64, page int, params string) (*Paginat
 	}
 	return &response, nil
 }
+
+func (b *Beatport) GetLabelTracks(id int64, page int, params string) (*Paginated[Track], error) {
+	res, err := b.fetch(
+		"GET",
+		fmt.Sprintf("/catalog/tracks/?page=%d&label_id=%d&%s", page, id, params),
+		nil,
+		"",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	var response Paginated[Track]
+	if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}

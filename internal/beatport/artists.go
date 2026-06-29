@@ -58,7 +58,7 @@ func (b *Beatport) GetArtist(id int64) (*Artist, error) {
 func (b *Beatport) GetArtistTracks(id int64, page int, params string) (*Paginated[Track], error) {
 	res, err := b.fetch(
 		"GET",
-		fmt.Sprintf("/catalog/artists/%d/tracks/?page=%d&%s", id, page, params),
+		fmt.Sprintf("/catalog/tracks/?page=%d&artist_id=%d&%s", page, id, params),
 		nil,
 		"",
 	)

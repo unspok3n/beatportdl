@@ -8,6 +8,7 @@ require (
 	github.com/grafov/m3u8 v0.12.0
 	github.com/vbauerster/mpb/v8 v8.8.3
 	gopkg.in/yaml.v2 v2.4.0
+	resenje.org/singleflight v0.4.3
 )
 
 require (
