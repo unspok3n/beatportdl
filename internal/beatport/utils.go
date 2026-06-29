@@ -104,13 +104,6 @@ func ParseTemplate(template string, values map[string]string) string {
 	return result
 }
 
-func storeUrl(id int64, entity, slug string, store Store) string {
-	var domain string
-	switch store {
-	default:
-		domain = "beatport.com"
-	case StoreBeatsource:
-		domain = "beatsource.com"
-	}
-	return fmt.Sprintf("https://www.%s/%s/%s/%d", domain, entity, slug, id)
+func storeUrl(id int64, entity, slug string) string {
+	return fmt.Sprintf("https://www.beatport.com/%s/%s/%d", entity, slug, id)
 }

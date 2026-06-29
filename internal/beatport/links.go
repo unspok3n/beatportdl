@@ -18,9 +18,6 @@ var (
 	ChartLink    LinkType = "charts"
 	LabelLink    LinkType = "labels"
 	ArtistLink   LinkType = "artists"
-
-	StoreBeatport   Store = "beatport"
-	StoreBeatsource Store = "beatsource"
 )
 
 type Link struct {
@@ -28,7 +25,6 @@ type Link struct {
 	Type     LinkType
 	ID       int64
 	Params   string
-	Store    Store
 }
 
 var (
@@ -47,12 +43,7 @@ func (b *Beatport) ParseUrl(inputURL string) (*Link, error) {
 		Original: inputURL,
 	}
 
-	switch u.Host {
-	case "www.beatport.com", "api.beatport.com":
-		link.Store = StoreBeatport
-	case "www.beatsource.com", "api.beatsource.com":
-		link.Store = StoreBeatsource
-	default:
+	if u.Host != "www.beatport.com" && u.Host != "api.beatport.com" {
 		return nil, ErrInvalidUrl
 	}
 

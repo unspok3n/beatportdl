@@ -22,7 +22,6 @@ type Release struct {
 	TrackUrls     []string        `json:"tracks"`
 	TrackCount    int             `json:"track_count"`
 	URL           string          `json:"url"`
-	Store         Store           `json:"store"`
 }
 
 type ReleaseBPMRange struct {
@@ -31,7 +30,7 @@ type ReleaseBPMRange struct {
 }
 
 func (r *Release) StoreUrl() string {
-	return storeUrl(r.ID, "release", r.Slug, r.Store)
+	return storeUrl(r.ID, "release", r.Slug)
 }
 
 func (b *Beatport) GetRelease(id int64) (*Release, error) {
@@ -49,7 +48,6 @@ func (b *Beatport) GetRelease(id int64) (*Release, error) {
 	if err = json.NewDecoder(res.Body).Decode(response); err != nil {
 		return nil, err
 	}
-	response.Store = b.store
 	return response, nil
 }
 
@@ -67,9 +65,6 @@ func (b *Beatport) GetReleaseTracks(id int64, page int, params string) (*Paginat
 	var response Paginated[Track]
 	if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
 		return nil, err
-	}
-	for i := range response.Results {
-		response.Results[i].Store = b.store
 	}
 	return &response, nil
 }

@@ -11,12 +11,10 @@ import (
 )
 
 const (
-	beatportBaseUrl   = "https://api.beatport.com/v4"
-	beatsourceBaseUrl = "https://api.beatsource.com/v4"
+	beatportBaseUrl = "https://api.beatport.com/v4"
 )
 
 type Beatport struct {
-	store   Store
 	client  *http.Client
 	headers map[string]string
 	auth    *Auth
@@ -36,7 +34,7 @@ type Paginated[T any] struct {
 	Results  []T     `json:"results"`
 }
 
-func New(store Store, proxyUrl string, auth *Auth) *Beatport {
+func New(proxyUrl string, auth *Auth) *Beatport {
 	transport := &http.Transport{}
 	if proxyUrl != "" {
 		proxyURL, _ := url.Parse(proxyUrl)
@@ -50,8 +48,7 @@ func New(store Store, proxyUrl string, auth *Auth) *Beatport {
 		"user-agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
 	}
 	f := Beatport{
-		store: store,
-		auth:  auth,
+		auth: auth,
 		client: &http.Client{
 			Timeout:   time.Duration(40) * time.Second,
 			Transport: transport,
@@ -90,15 +87,7 @@ func (b *Beatport) fetch(method, endpoint string, payload interface{}, contentTy
 		}
 	}
 
-	var baseUrl string
-	switch b.store {
-	default:
-		baseUrl = beatportBaseUrl
-	case StoreBeatsource:
-		baseUrl = beatsourceBaseUrl
-	}
-
-	req, err := http.NewRequest(method, baseUrl+endpoint, &body)
+	req, err := http.NewRequest(method, beatportBaseUrl+endpoint, &body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
