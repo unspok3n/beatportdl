@@ -32,6 +32,17 @@ type Paginated[T any] struct {
 	Page     string  `json:"page"`
 	PerPage  int     `json:"per_page"`
 	Results  []T     `json:"results"`
+	Facets   Facets  `json:"facets"`
+}
+
+type Facets struct {
+	Fields map[string][]Facet `json:"fields"`
+}
+
+type Facet struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 }
 
 func New(proxyUrl string, auth *Auth) *Beatport {

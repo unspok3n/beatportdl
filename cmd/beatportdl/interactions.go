@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"unspok3n/beatportdl/config"
+	"unspok3n/beatportdl/internal/beatport"
 )
 
 var (
@@ -78,9 +80,286 @@ func (app *application) mainPrompt() {
 	fmt.Print("Enter url or search query: ")
 	input := GetLine()
 	if strings.HasPrefix(input, "https://www.beatport.com") {
-		app.urls = append(app.urls, input)
+		if strings.Contains(input, "/label/") || strings.Contains(input, "/artist/") {
+			app.filtersPrompt(input)
+		} else {
+			app.urls = append(app.urls, input)
+		}
 	} else {
 		app.search(input)
+	}
+}
+
+func (app *application) filtersPrompt(rawURL string) {
+	link, err := app.bp.ParseUrl(rawURL)
+	if err != nil {
+		fmt.Println("Could not parse URL:", err)
+		return
+	}
+
+	params := "include_facets=true&per_page=1"
+
+	var stats *entityStats
+	var listItemName string
+	switch link.Type {
+	case beatport.LabelLink:
+		listItemName = "releases"
+		labelReleases, err := app.bp.GetLabelReleases(link.ID, 1, params)
+		if err != nil {
+			fmt.Println("Could not fetch label releases:", err)
+			return
+		}
+
+		stats = newEntityStats(labelReleases.Count, &labelReleases.Facets)
+	case beatport.ArtistLink:
+		listItemName = "tracks"
+		artistTracks, err := app.bp.GetArtistTracks(link.ID, 1, params)
+		if err != nil {
+			fmt.Println("Could not fetch artist tracks:", err)
+			return
+		}
+
+		stats = newEntityStats(artistTracks.Count, &artistTracks.Facets)
+	default:
+		return
+	}
+
+	fmt.Printf("\n%d %s total.\n", stats.total, listItemName)
+
+	genres := rankMap(stats.genres)
+	subgenres := rankMap(stats.subgenres)
+	artists := rankMap(stats.artists)
+
+	const (
+		stepGenres = iota
+		stepSubgenres
+		stepArtists
+		stepDateFrom
+		stepDateTo
+		stepConfirm
+	)
+
+	var selectedGenres, selectedSubgenres, selectedArtists []string
+	var dateFrom, dateTo string
+
+	step := stepGenres
+	for {
+		switch step {
+
+		case stepGenres:
+			sel, back := selectFromList("\nGenres", genres)
+			if back {
+				fmt.Println("Cancelled.")
+				return
+			}
+			selectedGenres = sel
+			step = stepSubgenres
+
+		case stepSubgenres:
+			if len(subgenres) == 0 {
+				step = stepArtists
+				continue
+			}
+			sel, back := selectFromList("\nSubgenres", subgenres)
+			if back {
+				step = stepGenres
+				continue
+			}
+			selectedSubgenres = sel
+			step = stepArtists
+
+		case stepArtists:
+			if len(artists) == 0 {
+				step = stepDateFrom
+				continue
+			}
+			sel, back := selectFromList("\nArtists (by track count)", artists)
+			if back {
+				if len(subgenres) > 0 {
+					step = stepSubgenres
+				} else {
+					step = stepGenres
+				}
+				continue
+			}
+			selectedArtists = sel
+			step = stepDateFrom
+
+		case stepDateFrom:
+			fmt.Print("\nDownload from date (e.g. 1996 or 1996-06-01, Enter for all, b to go back): ")
+			input := strings.TrimSpace(GetLine())
+			if input == "b" {
+				if len(artists) > 0 {
+					step = stepArtists
+				} else if len(subgenres) > 0 {
+					step = stepSubgenres
+				} else {
+					step = stepGenres
+				}
+				continue
+			}
+			dateFrom = normaliseDate(input)
+			step = stepDateTo
+
+		case stepDateTo:
+			fmt.Print("Download up to date   (e.g. 2024 or 2024-12-31, Enter for all, b to go back): ")
+			input := strings.TrimSpace(GetLine())
+			if input == "b" {
+				step = stepDateFrom
+				continue
+			}
+			dateTo = normaliseDateTo(input)
+			step = stepConfirm
+
+		case stepConfirm:
+			fmt.Println("\n--- Download filter summary ---")
+			if len(selectedGenres) > 0 {
+				fmt.Println("  Genres:    ", strings.Join(selectedGenres, ", "))
+			} else {
+				fmt.Println("  Genres:     all")
+			}
+			if len(selectedSubgenres) > 0 {
+				fmt.Println("  Subgenres: ", strings.Join(selectedSubgenres, ", "))
+			} else {
+				fmt.Println("  Subgenres:  all")
+			}
+			if len(selectedArtists) > 0 {
+				fmt.Println("  Artists:   ", strings.Join(selectedArtists, ", "))
+			} else {
+				fmt.Println("  Artists:    all")
+			}
+			dateRange := "all time"
+			if dateFrom != "" && dateTo != "" {
+				dateRange = dateFrom + " → " + dateTo
+			} else if dateFrom != "" {
+				dateRange = dateFrom + " → present"
+			} else if dateTo != "" {
+				dateRange = "up to " + dateTo
+			}
+			fmt.Println("  Dates:     ", dateRange)
+
+			fmt.Print("\nStart download? (y/n/b to go back): ")
+			ans := strings.ToLower(strings.TrimSpace(GetLine()))
+			if ans == "b" {
+				step = stepDateTo
+				continue
+			}
+			if ans != "y" {
+				fmt.Println("Cancelled.")
+				return
+			}
+
+			var params []string
+
+			for i, genre := range selectedGenres {
+				selectedGenres[i] = url.QueryEscape(genre)
+			}
+			genresStr := strings.Join(selectedGenres, ",")
+
+			var subgenreIds []string
+			for _, subgenre := range selectedSubgenres {
+				subgenreIds = append(subgenreIds, strconv.FormatInt(stats.subgenreIds[subgenre], 10))
+			}
+			subgenreIdsStr := strings.Join(subgenreIds, ",")
+
+			for i, artist := range selectedArtists {
+				selectedArtists[i] = url.QueryEscape(artist)
+			}
+			artistsStr := strings.Join(selectedArtists, ",")
+
+			if len(selectedGenres) > 0 {
+				params = append(params, fmt.Sprintf("genre_name=%s", genresStr))
+			}
+
+			if len(selectedSubgenres) > 0 {
+				params = append(params, fmt.Sprintf("sub_genre_id=%s", subgenreIdsStr))
+			}
+
+			if len(selectedArtists) > 0 {
+				params = append(params, fmt.Sprintf("artist_name=%s", artistsStr))
+			}
+
+			if dateFrom != "" || dateTo != "" {
+				params = append(params, fmt.Sprintf("new_release_date=%s:%s", dateFrom, dateTo))
+			}
+
+			paramsTotal := strings.Join(params, "&")
+
+			if link.Params != "" {
+				paramsTotal = fmt.Sprintf("&%s", paramsTotal)
+			} else {
+				paramsTotal = fmt.Sprintf("?%s", paramsTotal)
+			}
+
+			rawURL += paramsTotal
+
+			app.urls = append(app.urls, rawURL)
+			return
+		}
+	}
+}
+
+// selectFromList prints a numbered list and returns the names the user chose plus a back flag.
+// Returns nil on Enter & asterisk; back=true if user types b.
+func selectFromList(heading string, entries []rankEntry) ([]string, bool) {
+	if len(entries) == 0 {
+		return nil, false
+	}
+	fmt.Printf("%s found:\n", heading)
+	for i, e := range entries {
+		fmt.Printf("  %2d. %-42s %d tracks\n", i+1, e.name, e.count)
+	}
+	fmt.Print("Select (e.g. 1,3  |  * for all  |  Enter to skip  |  b to go back): ")
+	input := strings.TrimSpace(GetLine())
+
+	if input == "b" {
+		return nil, true
+	}
+	if input == "" || input == "*" {
+		return nil, false
+	}
+
+	var selected []string
+	for _, part := range strings.Split(input, ",") {
+		part = strings.TrimSpace(part)
+		n, err := strconv.Atoi(part)
+		if err != nil || n < 1 || n > len(entries) {
+			fmt.Printf("  (ignored invalid selection: %q)\n", part)
+			continue
+		}
+		selected = append(selected, entries[n-1].name)
+	}
+	return selected, false
+}
+
+// normaliseDateFrom accepts "1996", "1996-06", or "1996-06-01" and returns "YYYY-MM-DD" (start of period).
+func normaliseDate(input string) string {
+	return normaliseDateBound(input, false)
+}
+
+// normaliseDateTo resolves to the end of the given year or month.
+func normaliseDateTo(input string) string {
+	return normaliseDateBound(input, true)
+}
+
+func normaliseDateBound(input string, endOfPeriod bool) string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return ""
+	}
+	switch len(input) {
+	case 4: // "1996"
+		if endOfPeriod {
+			return input + "-12-31"
+		}
+		return input + "-01-01"
+	case 7: // "1996-06"
+		if endOfPeriod {
+			return input + "-31" // good enough for string comparison purposes
+		}
+		return input + "-01"
+	default:
+		return input
 	}
 }
 
