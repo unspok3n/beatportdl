@@ -45,6 +45,23 @@ func (c *Chart) DirectoryName(n NamingPreferences) string {
 	return SanitizePath(directoryName, n.Whitespace)
 }
 
+// DirectoryNameWithFirstTrackGenre creates a directory name using the genre from the first track
+func (c *Chart) DirectoryNameWithFirstTrackGenre(n NamingPreferences, firstTrackGenre string) string {
+	templateValues := map[string]string{
+		"id":             strconv.Itoa(int(c.ID)),
+		"name":           SanitizeForPath(c.Name),
+		"slug":           c.Slug,
+		"first_genre":    SanitizeForPath(firstTrackGenre),
+		"track_count":    NumberWithPadding(c.TrackCount, c.TrackCount, n.TrackNumberPadding),
+		"creator":        SanitizeForPath(c.Person.OwnerName),
+		"created_date":   c.AddDate.Format("2006-01-02"),
+		"published_date": c.PublishDate.Format("2006-01-02"),
+		"updated_date":   c.ChangeDate.Format("2006-01-02"),
+	}
+	directoryName := ParseTemplate(n.Template, templateValues)
+	return SanitizePath(directoryName, n.Whitespace)
+}
+
 func (b *Beatport) GetChart(id int64) (*Chart, error) {
 	res, err := b.fetch(
 		"GET",

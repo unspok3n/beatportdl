@@ -34,6 +34,53 @@ type DownloadsDirectoryEntity interface {
 	DirectoryName(n beatport.NamingPreferences) string
 }
 
+// FirstTrackGenreProvider interface for entities that can provide the first track's genre
+type FirstTrackGenreProvider interface {
+	DirectoryNameWithFirstTrackGenre(n beatport.NamingPreferences, firstTrackGenre string) string
+}
+
+// getFirstTrackGenreFromPlaylist fetches the first track from a playlist and returns its genre
+func (app *application) getFirstTrackGenreFromPlaylist(inst *beatport.Beatport, playlistID int64) (string, error) {
+	// Get the first page of playlist items
+	items, err := inst.GetPlaylistItems(playlistID, 1, "")
+	if err != nil {
+		return "", err
+	}
+
+	if len(items.Results) == 0 {
+		return "", fmt.Errorf("playlist is empty")
+	}
+
+	// Get the first track's full details
+	firstTrack, err := inst.GetTrack(items.Results[0].Track.ID)
+	if err != nil {
+		return "", err
+	}
+
+	return firstTrack.Genre.Name, nil
+}
+
+// getFirstTrackGenreFromChart fetches the first track from a chart and returns its genre
+func (app *application) getFirstTrackGenreFromChart(inst *beatport.Beatport, chartID int64) (string, error) {
+	// Get the first page of chart tracks
+	tracks, err := inst.GetChartTracks(chartID, 1, "")
+	if err != nil {
+		return "", err
+	}
+
+	if len(tracks.Results) == 0 {
+		return "", fmt.Errorf("chart is empty")
+	}
+
+	// Get the first track's full details
+	firstTrack, err := inst.GetTrack(tracks.Results[0].ID)
+	if err != nil {
+		return "", err
+	}
+
+	return firstTrack.Genre.Name, nil
+}
+
 func (app *application) setupDownloadsDirectory(baseDir string, entity DownloadsDirectoryEntity) (string, error) {
 	if app.config.SortByContext {
 		var subDir string
@@ -80,6 +127,55 @@ func (app *application) setupDownloadsDirectory(baseDir string, entity Downloads
 					Template:   app.config.ArtistDirectoryTemplate,
 					Whitespace: app.config.WhitespaceCharacter,
 				},
+			)
+		}
+		baseDir = filepath.Join(baseDir, subDir)
+	}
+	return app.createDirectory(baseDir)
+}
+
+// setupDownloadsDirectoryWithFirstTrackGenre sets up the downloads directory using the first track's genre
+func (app *application) setupDownloadsDirectoryWithFirstTrackGenre(baseDir string, entity DownloadsDirectoryEntity, provider FirstTrackGenreProvider, inst *beatport.Beatport, entityID int64) (string, error) {
+	if app.config.SortByContext {
+		var subDir string
+		var firstGenre string
+		var err error
+
+		// Get the first track's genre based on entity type
+		switch entity.(type) {
+		case *beatport.Playlist:
+			firstGenre, err = app.getFirstTrackGenreFromPlaylist(inst, entityID)
+		case *beatport.Chart:
+			firstGenre, err = app.getFirstTrackGenreFromChart(inst, entityID)
+		default:
+			// Fall back to original behavior for other entity types
+			return app.setupDownloadsDirectory(baseDir, entity)
+		}
+
+		if err != nil {
+			// If we can't get the first track's genre, fall back to the original behavior
+			return app.setupDownloadsDirectory(baseDir, entity)
+		}
+
+		// Use the first track's genre for directory naming
+		switch castedEntity := entity.(type) {
+		case *beatport.Playlist:
+			subDir = castedEntity.DirectoryNameWithFirstTrackGenre(
+				beatport.NamingPreferences{
+					Template:           app.config.PlaylistDirectoryTemplate,
+					Whitespace:         app.config.WhitespaceCharacter,
+					TrackNumberPadding: app.config.TrackNumberPadding,
+				},
+				firstGenre,
+			)
+		case *beatport.Chart:
+			subDir = castedEntity.DirectoryNameWithFirstTrackGenre(
+				beatport.NamingPreferences{
+					Template:           app.config.ChartDirectoryTemplate,
+					Whitespace:         app.config.WhitespaceCharacter,
+					TrackNumberPadding: app.config.TrackNumberPadding,
+				},
+				firstGenre,
 			)
 		}
 		baseDir = filepath.Join(baseDir, subDir)
@@ -560,7 +656,7 @@ func (app *application) handlePlaylistLink(link *beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, playlist)
+	downloadsDir, err := app.setupDownloadsDirectoryWithFirstTrackGenre(app.config.DownloadsDirectory, playlist, playlist, inst, link.ID)
 	if err != nil {
 		app.errorLogWrapper(link.Original, "setup downloads directory", err)
 		return
@@ -637,7 +733,7 @@ func (app *application) handleChartLink(link *beatport.Link) {
 		return
 	}
 
-	downloadsDir, err := app.setupDownloadsDirectory(app.config.DownloadsDirectory, chart)
+	downloadsDir, err := app.setupDownloadsDirectoryWithFirstTrackGenre(app.config.DownloadsDirectory, chart, chart, inst, link.ID)
 	if err != nil {
 		app.errorLogWrapper(link.Original, "setup downloads directory", err)
 		return
